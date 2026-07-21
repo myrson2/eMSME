@@ -1,85 +1,88 @@
-# Full-Stack Monorepo Project
+# eMSME - eGovPH Service Module
 
-This repository is partitioned into separate **Frontend**, **Backend**, and **Mobile** applications.
+eMSME is a service module inside the eGovPH ecosystem that helps MSME owners discover financial aid programs they qualify for, apply using documents already on file, and track applications end-to-end.
 
-## 📁 Project Structure
+This repository contains:
+1. **Backend** (`/backend`): An Express + TypeScript API that orchestrates credit scoring, state machine tracking, and integrations with eGovPH SSO, eVerify, and eMessage.
+2. **Mobile** (`/mobile`): A React Native / Expo mobile application built with NativeWind that serves as the primary user-facing platform.
+3. **Frontend** (`/frontend`): A Vite + React landing page (currently minimal/static representation).
 
-```text
-Project Template/
-├── .agents/       # Generic AI entry point & system rules
-│   ├── AGENTS.md                  # System rules & project guidelines
-│   ├── architecture/              # Cross-feature system design
-│   ├── conventions/               # Team coding style & git conventions
-│   ├── mcps/                      # Tooling and external API configs
-│   ├── memory/                    # Session handoff notes (context.md)
-│   ├── skills/                    # Reusable agent skills
-│   └── specs/                     # Spec-driven development folder
-│       └── template/              # Reusable template for specs (spec, arch, impl, decisions)
-├── backend/       # Express + TypeScript backend API
-├── frontend/      # React + Vite + TypeScript web application
-├── mobile/        # React Native / Expo mobile application
-├── docs/          # General documentation
-├── package.json   # Root orchestrator scripts (npm run dev, etc.)
-├── package-lock.json
-├── .gitignore
-└── README.md
-```
+---
 
 ## 🚀 Getting Started
 
-### 1. Install Dependencies
+Follow these step-by-step instructions to run the project locally.
 
-Run from the project root directory:
+### 1. Prerequisites
+
+- **Node.js**: v18 or later.
+- **npm** or **yarn**.
+- **Expo Go app**: Installed on your physical device (iOS/Android), or an Android/iOS emulator installed on your computer.
+
+### 2. Install Dependencies
+
+First, you need to install the dependencies for both the backend and mobile workspaces. Run the following commands from the project root:
 
 ```bash
-# Install root dependencies
+# Install backend dependencies
+cd backend
 npm install
 
-# Install workspace dependencies
-npm --prefix frontend install
-npm --prefix backend install
-npm --prefix mobile install
+# Install mobile dependencies
+cd ../mobile
+npm install
+
+# Return to root (optional)
+cd ..
 ```
 
-### 2. Run Development Servers
+### 3. Start the Backend API
 
-#### Option A: Run Frontend & Backend Concurrently
+The backend manages the SQLite database (`emsme.db`) which automatically creates the required tables on its first run. It runs on `http://localhost:3000`.
 
-To start both the **Web Frontend** and **Backend API** together with hot-reloading:
+Open a new terminal window/tab:
 
 ```bash
+cd backend
 npm run dev
 ```
 
-- **Frontend**: Accessible at [http://localhost:5173](http://localhost:5173)
-- **Backend API**: Accessible at [http://localhost:5000](http://localhost:5000)
+*You should see a message saying the server is running on `http://localhost:3000` and the database has been initialized.*
 
-#### Option B: Run Workspaces Separately
+### 4. Start the Mobile Application (React Native / Expo)
 
-- **Web Frontend**:
-  ```bash
-  npm run dev:frontend
-  ```
-- **Backend API**:
-  ```bash
-  npm run dev:backend
-  ```
-- **Mobile App (Expo)**:
-  ```bash
-  npm --prefix mobile run start
-  ```
-
-### 3. Build for Production
-
-To build both Frontend and Backend for production deployment:
+Open a second terminal window/tab to start the Expo bundler:
 
 ```bash
-npm run build
+cd mobile
+npm start
 ```
 
-Or build individual workspaces:
+This will launch the Expo Developer Menu in your terminal. You can run the app in several ways:
+- **Android Emulator**: Press `a` in the terminal to launch on an active Android emulator.
+- **iOS Simulator**: Press `i` to launch on an active iOS simulator.
+- **Physical Device**: Scan the QR code shown in the terminal using the Expo Go app (Android) or the native Camera app (iOS).
 
+> [!NOTE]
+> **Important for physical devices**: If you test on a physical device, `localhost:3000` won't resolve correctly. You will need to start the mobile app using your local machine's IP address by setting `EXPO_PUBLIC_API_URL` before starting Expo.
+> Example (Mac/Linux): `EXPO_PUBLIC_API_URL=http://192.168.1.5:3000/api npm start`
+> Example (Windows PowerShell): `$env:EXPO_PUBLIC_API_URL="http://192.168.1.5:3000/api"; npm start`
+
+### 5. Running Tests (Optional)
+
+We have an integration test suite for the backend that tests the entire Onboarding & Loan Application lifecycle against the running server.
+
+While the backend is running (`npm run dev`), open another terminal:
 ```bash
-npm run build:frontend
-npm run build:backend
+cd backend
+npm run test:api
 ```
+This runs the full end-to-end integration checklist (14 steps) confirming system integrity.
+
+---
+
+## 📁 Project Architecture
+
+- `.agents/`: AI specs, architectural docs, design rules, and session memory.
+- `backend/src/`: Contains routes, SQLite `db/index.ts` models, authentication middleware, and `services/` for business logic (credit scoring, verification routing).
+- `mobile/src/`: Contains React Navigation setup (`navigation/`), NativeWind UI (`screens/`), and API context (`context/AuthContext.tsx`).

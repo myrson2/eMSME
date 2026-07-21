@@ -5,17 +5,19 @@ This file is the entry point for any AI agent working in this repo. Read this FI
 ---
 
 ## 1. Project Context & Identity
-- **Project Name:** [PROJECT_NAME]
-- **Primary Goal:** [PRIMARY_GOAL]
+- **Project Name:** eMSME
+- **Primary Goal:** To create a platform that will help MSMEs in the Philippines to register their business, get funding, and access other resources that can help them grow.
+- **Lender Definition:** eMSME acts as an **aggregator/marketplace** connecting MSMEs to third-party partner banks and financial institutions (e.g., LANDBANK, DBP) who provide the capital.
+- **Development Focus:** **Mobile Application (`mobile/`)** is the primary user-facing platform. `frontend/` is used strictly as a static landing/marketing page.
 - **Tone & Code Philosophy:** Write clean, modular, production-ready code. No placeholder logic, no dead comments, and no inline mock data inside production UI files.
 ---
 
 ## 2. Tech Stack Constraints (Strict Locks)
-> ⚠️ **DO NOT deviation from these locked technologies under any circumstances.**
+> ⚠️ **DO NOT deviate from these locked technologies under any circumstances.**
 
-- **Web Frontend:** React + Vite (TypeScript)
-- **Backend Infrastructure:** Express / Node (TypeScript)
-- **Mobile Framework:** React Native (Expo SDK)
+- **Mobile Application (PRIMARY):** React Native (Expo SDK, TypeScript)
+- **Backend Infrastructure:** Express / Node (TypeScript) + SQLite
+- **Web Frontend:** React + Vite (TypeScript) *(Landing Page & Web Callbacks Only)*
 - **State Management:** React Context API / Custom Hooks
 
 ---
@@ -74,22 +76,46 @@ Skills are global and reusable — never duplicate one inside a feature folder.
 
 ## 7. Guardrails
 
-- **Stack boundaries:** [e.g. "Backend only — no frontend framework decisions without asking"] *(fill in for your team)*
+- **Primary Platform Focus:** Mobile (`mobile/`) is the primary user-facing application. Do NOT build application features in `frontend/` — keep `frontend/` as a clean landing page.
+- **Authentication Conventions:**
+  - All OAuth/SSO flows MUST use server-side token exchange.
+  - Client secrets (`EGOV_CLIENT_SECRET`) must NEVER exist in `frontend/` or `mobile/`.
+  - Authentication callbacks hit Express endpoint `/api/auth/egov/exchange`.
 - **No scope creep:** Out-of-scope items are listed at the bottom of each `spec.md`. Don't build them unless the user explicitly asks.
-- **Hackathon pragmatism:** Favor shipping over perfection — but don't skip updating specs/implementation docs, since that's what keeps the whole team (and the AI) in sync under time pressure.
-- **Ask before big architectural changes** (e.g. swapping SQLite for Postgres) — log the decision either way.
+- **Hackathon pragmatism:** Favor shipping over perfection — but don't skip updating specs/implementation docs.
+- **Ask before big architectural changes** — log decisions in `decisions.md`.
 
 ---
 
 ## 8. Current Priorities
 
-*(Update this section as the hackathon progresses — it's the fastest way to re-orient a fresh session.)*
+*(Last updated: 2026-07-21)*
 
-- [ ] Feature in progress: [INITIAL_FEATURE_NAME] — see `.agents/specs/[INITIAL_FEATURE_NAME]/implementation.md`
-- [ ] Next up: —
-- [ ] Blocked on: —
+### Completed Specs (All .md files only — no code written yet)
+- [x] `egov-sso` — Mobile-native SSO spec (expo-auth-session + backend exchange)
+- [x] `emessage-sms` — SMS OTP gateway spec
+- [x] `everify` — PhilSys identity verification spec
+- [x] `efacial-recog` — Facial liveness & biometric matching spec
+- [x] `epay` — eGovPay payment gateway spec (Repayments only)
+- [x] `egov-ai` — Conversational AI assistant spec
+- [x] `eblockchain` — eGovChain blockchain audit trail spec
 
----
+### Next Up (Specs complete — ready for implementation)
+- [x] `loan-module` — Core loan application state machine, submission, and partner bank disbursement workflow
+- [x] `user-onboarding` — Step-by-step mobile onboarding flow (SSO → eFacial → eVerify → Business Profile → Financial)
+- [x] `credit-engine` — Credit scoring calculator implementation spec
+- [x] `business-verification` — DTI/SEC/CDA/BIR/LGU routing and verification spec
+
+### Immediate Next Steps (Implementation Phase)
+- [ ] Scaffold `backend/` Express app (entry point, router, SQLite setup, JWT middleware)
+- [ ] Run database migrations (all 6 SQLite table schemas)
+- [ ] Implement `user-onboarding` routes + `business-verification` service
+- [ ] Implement `credit-engine` pure functions + `assessLoan()` orchestrator
+- [ ] Implement `loan-module` routes + amortization calculator + state machine
+- [ ] Scaffold `mobile/` Expo app with navigation and all onboarding screens
+
+### Blocked On
+- None.
 
 ## 9. Session Handoff
 
