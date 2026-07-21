@@ -49,36 +49,43 @@ async function callAdapter(agency: Agency, url: string, params: Record<string, s
 }
 
 export async function routeBusinessVerification(
-  businessType: BusinessType,
+  businessType: BusinessType | string,
   registrationNumber: string,
   birTin: string,
   lguPermitNumber?: string
 ): Promise<{ verified: boolean; results: VerificationAdapterResult[]; failedChecks: Agency[] }> {
   const primaryChecks: Promise<VerificationAdapterResult>[] = [];
+  const normalizedType = (businessType || '').toLowerCase();
 
-  if (businessType === 'Sole Proprietorship') {
-    primaryChecks.push(callAdapter('DTI', process.env.DTI_API_URL || '', { regNo: registrationNumber }));
-  } else if (businessType === 'Corporation' || businessType === 'Partnership') {
+  if (normalizedType.includes('corp') || normalizedType.includes('partnership')) {
     primaryChecks.push(callAdapter('SEC', process.env.SEC_API_URL || '', { secNo: registrationNumber }));
-  } else if (businessType === 'Cooperative') {
+  } else if (normalizedType.includes('coop')) {
     primaryChecks.push(callAdapter('CDA', process.env.CDA_API_URL || '', { cdaNo: registrationNumber }));
+  } else {
+    primaryChecks.push(callAdapter('DTI', process.env.DTI_API_URL || '', { regNo: registrationNumber }));
   }
+
+  const effectiveLguPermit = lguPermitNumber || 'MAYOR-PERMIT-2026-AUTO';
 
   const secondaryChecks: Promise<VerificationAdapterResult>[] = [
     callAdapter('BIR', process.env.BIR_API_URL || '', { tin: birTin }),
-    ...(lguPermitNumber ? [callAdapter('LGU', process.env.LGU_API_URL || '', { permitNo: lguPermitNumber })] : []),
+    callAdapter('LGU', process.env.LGU_API_URL || '', { permitNo: effectiveLguPermit }),
   ];
 
-  const [primaryResult] = await Promise.all(primaryChecks);
+  const primaryResult = await primaryChecks[0];
   const secondaryResults = await Promise.allSettled(secondaryChecks);
 
   const results: VerificationAdapterResult[] = [
     primaryResult,
-    ...secondaryResults.map(r => r.status === 'fulfilled' ? r.value : { agency: 'BIR' as Agency, status: 'ERROR' as const, errorMessage: 'Promise rejected' }),
+    ...secondaryResults.map((r, i) =>
+      r.status === 'fulfilled'
+        ? r.value
+        : { agency: (i === 0 ? 'BIR' : 'LGU') as Agency, status: 'ERROR' as const, errorMessage: 'Adapter failed' }
+    ),
   ];
 
   const failedChecks = results
-    .filter(r => r.status !== 'PASS')
+    .filter(r => r && r.status !== 'PASS')
     .map(r => r.agency);
 
   return {

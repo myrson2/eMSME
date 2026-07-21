@@ -8,6 +8,7 @@ const router = Router();
 
 export interface ExchangeRequestBody {
   exchange_code?: string;
+  code?: string;
 }
 
 export interface EGovTokenResponse {
@@ -29,12 +30,12 @@ router.post(
   '/exchange',
   async (req: Request<{}, {}, ExchangeRequestBody>, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { exchange_code } = req.body;
+      const exchange_code = req.body.exchange_code || req.body.code;
 
       if (!exchange_code || typeof exchange_code !== 'string' || exchange_code.trim() === '') {
         res.status(400).json({
           success: false,
-          message: 'Missing required parameter: exchange_code',
+          message: 'Missing required parameter: exchange_code or code',
           errorCode: 'ERR_MISSING_EXCHANGE_CODE',
         });
         return;
@@ -125,6 +126,7 @@ router.post(
           email: userProfile.email,
           firstName: userProfile.first_name,
           lastName: userProfile.last_name,
+          name: `${userProfile.first_name} ${userProfile.last_name}`,
         },
       });
     } catch (err: any) {
@@ -132,5 +134,32 @@ router.post(
     }
   }
 );
+
+// GET /api/auth/session or /api/auth/egov/session
+router.get('/session', async (req: Request, res: Response): Promise<void> => {
+  const authHeader = req.headers['authorization'];
+  const tokenFromHeader = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const tokenFromCookie = req.cookies?.emsme_session;
+  const token = tokenFromHeader || tokenFromCookie;
+
+  if (!token) {
+    res.status(200).json({ authenticated: false, user: null });
+    return;
+  }
+
+  const jwtSecret = process.env.JWT_SECRET || 'dev_secret_fallback_key';
+  try {
+    const decoded = jwt.verify(token, jwtSecret) as any;
+    res.status(200).json({ authenticated: true, user: decoded });
+  } catch (err) {
+    res.status(200).json({ authenticated: false, user: null });
+  }
+});
+
+// POST /api/auth/logout or /api/auth/egov/logout
+router.post('/logout', (req: Request, res: Response): void => {
+  res.clearCookie('emsme_session', { path: '/' });
+  res.status(200).json({ success: true, message: 'Logged out successfully.' });
+});
 
 export default router;

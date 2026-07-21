@@ -24,6 +24,7 @@ getDb()
 
 // Route Mounts
 app.use('/api/auth/egov', egovAuthRouter);
+app.use('/api/auth', egovAuthRouter);
 app.use('/api/verify', verifyRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/loans', loanRouter);
@@ -32,6 +33,15 @@ app.use('/api/payments/egovpay', paymentRouter);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', service: 'eMSME Backend API', timestamp: new Date().toISOString() });
+});
+
+// Global JSON error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[Unhandled Server Error]:', err);
+  res.status(500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+  });
 });
 
 app.listen(PORT, () => {

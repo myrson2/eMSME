@@ -3,21 +3,39 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import AuthStack from './AuthStack';
 import MainTabs from './MainTabs';
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 export default function RootNavigator() {
   const { isAuthenticated, isLoading, onboardingStep } = useAuth();
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-surface">
-        <Text className="font-sans text-body">Loading...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1740DE' }}>
+        <Animated.View entering={FadeIn.duration(600)} style={{ alignItems: 'center' }}>
+          <Text style={{
+            fontFamily: 'Poppins_700Bold',
+            fontSize: 36,
+            color: '#FFFFFF',
+            marginBottom: 4,
+          }}>
+            eMSME
+          </Text>
+          <Text style={{
+            fontFamily: 'Inter_400Regular',
+            fontSize: 14,
+            color: 'rgba(255,255,255,0.7)',
+            marginBottom: 32,
+          }}>
+            eGovPH Service Module
+          </Text>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </Animated.View>
       </View>
     );
   }
 
-  // Determine if user is fully onboarded
-  const isFullyOnboarded = isAuthenticated && onboardingStep === 'completed';
+  const isFullyOnboarded = isAuthenticated && (onboardingStep === 'COMPLETE' || onboardingStep === 'completed');
 
   return (
     <NavigationContainer>

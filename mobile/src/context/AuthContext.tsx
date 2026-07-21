@@ -3,13 +3,21 @@ import * as SecureStore from 'expo-secure-store';
 import client from '../api/client';
 
 export type OnboardingStep = 
+  | 'EGOV_SSO'
+  | 'EFACIAL'
+  | 'EVERIFY'
+  | 'BUSINESS_PROFILE'
+  | 'BUSINESS_VERIFY'
+  | 'FINANCIALS'
+  | 'COMPLETE'
   | 'sso_complete'
   | 'face_liveness_verified'
   | 'identity_verified'
   | 'business_profile_created'
   | 'business_verified'
   | 'financials_provided'
-  | 'completed';
+  | 'completed'
+  | string;
 
 interface AuthContextData {
   isAuthenticated: boolean;
@@ -32,6 +40,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkSession = async () => {
     setIsLoading(true);
     try {
+      const storedToken = await SecureStore.getItemAsync('userToken');
+      if (storedToken) {
+        client.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      }
+
       const res = await client.get('/auth/session');
       if (res.data.authenticated) {
         setIsAuthenticated(true);
@@ -63,7 +76,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       const res = await client.post('/auth/egov/exchange', { code });
-      // If we got here, cookie is set.
+      
+      if (res.data.token) {
+        await SecureStore.setItemAsync('userToken', res.data.token);
+        client.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      }
+
       await checkSession();
     } catch (error) {
       console.log('Login failed:', error);
@@ -80,6 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.log('Logout error', error);
     } finally {
+      await SecureStore.deleteItemAsync('userToken');
+      delete client.defaults.headers.common['Authorization'];
       setIsAuthenticated(false);
       setUser(null);
       setOnboardingStep(null);

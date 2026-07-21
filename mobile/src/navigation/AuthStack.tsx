@@ -13,28 +13,36 @@ const Stack = createNativeStackNavigator();
 export default function AuthStack() {
   const { onboardingStep, isAuthenticated } = useAuth();
 
+  const getOnboardingScreen = () => {
+    switch (onboardingStep) {
+      case 'EFACIAL':
+      case 'sso_complete':
+        return { name: 'FaceLiveness', component: FaceLivenessScreen };
+      case 'EVERIFY':
+      case 'face_liveness_verified':
+        return { name: 'EVerify', component: EVerifyScreen };
+      case 'BUSINESS_PROFILE':
+      case 'identity_verified':
+        return { name: 'BusinessProfile', component: BusinessProfileScreen };
+      case 'BUSINESS_VERIFY':
+      case 'business_profile_created':
+        return { name: 'BusinessVerification', component: BusinessVerificationScreen };
+      case 'FINANCIALS':
+      case 'business_verified':
+        return { name: 'Financials', component: FinancialsScreen };
+      default:
+        return { name: 'FaceLiveness', component: FaceLivenessScreen };
+    }
+  };
+
+  const currentScreen = getOnboardingScreen();
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Login" component={LoginScreen} />
       ) : (
-        <>
-          {onboardingStep === 'sso_complete' && (
-            <Stack.Screen name="FaceLiveness" component={FaceLivenessScreen} />
-          )}
-          {onboardingStep === 'face_liveness_verified' && (
-            <Stack.Screen name="EVerify" component={EVerifyScreen} />
-          )}
-          {onboardingStep === 'identity_verified' && (
-            <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} />
-          )}
-          {onboardingStep === 'business_profile_created' && (
-            <Stack.Screen name="BusinessVerification" component={BusinessVerificationScreen} />
-          )}
-          {onboardingStep === 'business_verified' && (
-            <Stack.Screen name="Financials" component={FinancialsScreen} />
-          )}
-        </>
+        <Stack.Screen name={currentScreen.name} component={currentScreen.component} />
       )}
     </Stack.Navigator>
   );

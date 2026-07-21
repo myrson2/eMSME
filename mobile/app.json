@@ -1,5 +1,15 @@
 {
-  "plugins": [
-    "expo-secure-store"
-  ]
+  "expo": {
+    "name": "eMSME",
+    "slug": "emsme",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "emsme",
+    "plugins": [
+      "expo-secure-store",
+      "expo-asset"
+    ]
+  }
 }

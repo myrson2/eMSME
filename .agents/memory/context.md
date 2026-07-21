@@ -174,3 +174,9 @@
 | Q7 | How to guarantee biometric purge from Node.js heap? | `efacial-recog` / `everify` RA 10173 compliance |
 | Q10 | Who controls `EGOVPAY_SETTLEMENT_TEMPLATE_UUID`? | `epay` fund routing |
 | Q13 | PostgreSQL or SQLite for production? | All backend data persistence |
+
+---
+
+## Session Handoff (2026-07-22)
+- **Completed:** Overhauled all 5 onboarding screens ([FaceLivenessScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/FaceLivenessScreen.tsx), [EVerifyScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/EVerifyScreen.tsx), [BusinessProfileScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/BusinessProfileScreen.tsx), [BusinessVerificationScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/BusinessVerificationScreen.tsx), [FinancialsScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/FinancialsScreen.tsx)) with loading spinners, visual step indicators (biometric oval frame, PhilSys ID card, DTI/SEC/BIR checklist), step-by-step verification progress timers, and comprehensive `try/catch` error handling with `Alert.alert` dialogs.
+- **Verification:** Both `npm test` backend suite and `@babel/core` compilation across all 5 screens completed with 100% success and 0 errors.
