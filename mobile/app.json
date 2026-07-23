@@ -9,7 +9,9 @@
     "scheme": "emsme",
     "plugins": [
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser",
+      ["expo-camera", { "cameraPermission": "Allow eMSME to access your camera for facial liveness verification." }]
     ]
   }
 }

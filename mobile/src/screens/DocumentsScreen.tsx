@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import client from '../api/client';
 
 interface DocumentItem {
   id: string;
@@ -10,9 +11,10 @@ interface DocumentItem {
   icon: string;
   verified: boolean;
   verifiedSource?: string;
+  uploading?: boolean;
 }
 
-const DOCUMENTS: DocumentItem[] = [
+const INITIAL_DOCUMENTS: DocumentItem[] = [
   {
     id: '1',
     name: 'Philippine National ID',
@@ -69,7 +71,32 @@ const DOCUMENTS: DocumentItem[] = [
 ];
 
 export default function DocumentsScreen() {
-  const verifiedCount = DOCUMENTS.filter(d => d.verified).length;
+  const [documents, setDocuments] = useState<DocumentItem[]>(INITIAL_DOCUMENTS);
+  const verifiedCount = documents.filter(d => d.verified).length;
+
+  const handleUpload = async (docId: string, docName: string) => {
+    // Set uploading state
+    setDocuments(prev => prev.map(d => d.id === docId ? { ...d, uploading: true } : d));
+    
+    try {
+      const res = await client.post('/documents/upload', { documentType: docName });
+      
+      if (res.data.success) {
+        setDocuments(prev => prev.map(d => 
+          d.id === docId 
+            ? { ...d, verified: true, verifiedSource: res.data.document.verifiedSource, uploading: false } 
+            : d
+        ));
+      } else {
+        setDocuments(prev => prev.map(d => d.id === docId ? { ...d, uploading: false } : d));
+        Alert.alert('Upload Failed', res.data.message);
+      }
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setDocuments(prev => prev.map(d => d.id === docId ? { ...d, uploading: false } : d));
+      Alert.alert('Error', 'Failed to upload document.');
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -115,7 +142,7 @@ export default function DocumentsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: '#1A1A1A' }}>
-              {verifiedCount} of {DOCUMENTS.length} documents verified
+              {verifiedCount} of {documents.length} documents verified
             </Text>
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: '#4A4A4A', marginTop: 1 }}>
               Upload missing documents to unlock more programs
@@ -126,15 +153,20 @@ export default function DocumentsScreen() {
 
       {/* Document list */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, paddingTop: 12, paddingBottom: 32 }}>
-        {DOCUMENTS.map((doc, index) => (
+        {documents.map((doc, index) => (
           <Animated.View key={doc.id} entering={FadeInRight.delay(150 + index * 60).duration(350)}>
             <TouchableOpacity
-              activeOpacity={doc.verified ? 1 : 0.7}
+              activeOpacity={doc.verified || doc.uploading ? 1 : 0.7}
+              onPress={() => {
+                if (!doc.verified && !doc.uploading) {
+                  handleUpload(doc.id, doc.name);
+                }
+              }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingVertical: 16,
-                borderBottomWidth: index < DOCUMENTS.length - 1 ? 1 : 0,
+                borderBottomWidth: index < documents.length - 1 ? 1 : 0,
                 borderBottomColor: '#F3F4F6',
               }}
             >
@@ -180,6 +212,21 @@ export default function DocumentsScreen() {
                     View
                   </Text>
                 </TouchableOpacity>
+              ) : doc.uploading ? (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#FEF3E2',
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  gap: 4,
+                }}>
+                  <ActivityIndicator size="small" color="#D99C45" />
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: '#D99C45' }}>
+                    Uploading...
+                  </Text>
+                </View>
               ) : (
                 <View style={{
                   flexDirection: 'row',

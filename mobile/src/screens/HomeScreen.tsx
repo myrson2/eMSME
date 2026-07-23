@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 
@@ -22,6 +23,7 @@ interface BusinessInfo {
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const [refreshing, setRefreshing] = useState(false);
   const [loanSummary, setLoanSummary] = useState<LoanSummary>({
     totalOutstanding: 12345,
@@ -51,17 +53,22 @@ export default function HomeScreen() {
       // Dashboard data is best-effort
     }
 
-    // Mock business data (in production this would come from backend)
-    setBusinesses([
-      {
-        id: '1',
-        name: user?.businessName || 'Dela Cruz General Trading',
-        type: 'Sole Proprietorship',
-        status: 'Verified',
-        completeness: 100,
-        matchCount: 3,
-      },
-    ]);
+    try {
+      const bizRes = await client.get('/business-profiles/my');
+      if (bizRes.data.success) {
+        // map backend keys to frontend keys if needed, or just use as is
+        setBusinesses(bizRes.data.businesses.map((b: any) => ({
+          id: b.id,
+          name: b.business_name || b.name,
+          type: b.business_type || b.type,
+          status: b.status,
+          completeness: b.completeness,
+          matchCount: b.matchCount
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch businesses for dashboard:', err);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -215,13 +222,14 @@ export default function HomeScreen() {
         </Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           {[
-            { icon: 'add-circle' as const, label: 'Apply Loan', color: '#1740DE' },
-            { icon: 'document-attach' as const, label: 'Upload Docs', color: '#D99C45' },
-            { icon: 'chatbubble-ellipses' as const, label: 'eGov AI', color: '#1740DE' },
+            { icon: 'add-circle' as const, label: 'Apply Loan', color: '#1740DE', action: () => navigation.navigate('ApplyLoan') },
+            { icon: 'document-attach' as const, label: 'Upload Docs', color: '#D99C45', action: () => navigation.navigate('Documents') },
+            { icon: 'chatbubble-ellipses' as const, label: 'eGov AI', color: '#1740DE', action: () => {} },
           ].map((action, index) => (
             <TouchableOpacity
               key={action.label}
               activeOpacity={0.7}
+              onPress={action.action}
               style={{
                 flex: 1,
                 backgroundColor: '#EFF1FD',
@@ -310,7 +318,7 @@ export default function HomeScreen() {
           <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 16, color: '#1A1A1A' }}>
             Your Businesses
           </Text>
-          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={() => navigation.navigate('BusinessList')}>
             <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: '#1740DE' }}>
               View All
             </Text>
@@ -324,6 +332,7 @@ export default function HomeScreen() {
             <Animated.View key={biz.id} entering={FadeInRight.delay(650 + index * 100).duration(400)}>
               <TouchableOpacity
                 activeOpacity={0.7}
+                onPress={() => navigation.navigate('BusinessDetails', { businessId: biz.id })}
                 style={{
                   backgroundColor: '#FFFFFF',
                   borderRadius: 18,

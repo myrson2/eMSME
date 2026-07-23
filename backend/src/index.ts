@@ -4,10 +4,13 @@ import dotenv from 'dotenv';
 import getDb from './db/index.js';
 
 import egovAuthRouter from './routes/auth/egov.js';
+import smsRouter from './routes/auth/sms.js';
 import verifyRouter from './routes/verify/index.js';
 import onboardingRouter from './routes/onboarding/index.js';
 import loanRouter from './routes/loans/index.js';
 import paymentRouter from './routes/payments/index.js';
+import businessRouter from './routes/business/index.js';
+import documentsRouter from './routes/documents/index.js';
 
 dotenv.config();
 
@@ -15,7 +18,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
 // Initialize SQLite Database on startup
 getDb()
@@ -25,10 +29,13 @@ getDb()
 // Route Mounts
 app.use('/api/auth/egov', egovAuthRouter);
 app.use('/api/auth', egovAuthRouter);
+app.use('/api/auth/sms', smsRouter);
 app.use('/api/verify', verifyRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/loans', loanRouter);
 app.use('/api/payments/egovpay', paymentRouter);
+app.use('/api/business-profiles', businessRouter);
+app.use('/api/documents', documentsRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

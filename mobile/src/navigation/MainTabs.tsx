@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import HomeScreen from '../screens/HomeScreen';
+import HomeStack from './HomeStack';
 import AidScreen from '../screens/AidScreen';
 import ScanScreen from '../screens/ScanScreen';
 import DocumentsScreen from '../screens/DocumentsScreen';
@@ -38,9 +38,10 @@ export default function MainTabs() {
       }}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
+        name="HomeTab"
+        component={HomeStack}
         options={{
+          tabBarLabel: 'Home',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'home' : 'home'}
