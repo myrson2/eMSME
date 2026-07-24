@@ -1,4 +1,4 @@
-# eMSME - eGovPH Service Module
+# eMSME - eGovPH Service Module (EGOV HACKATHON PROJECT)
 
 eMSME is a service module inside the eGovPH ecosystem that helps MSME owners discover financial aid programs they qualify for, apply using documents already on file, and track applications end-to-end.
 
