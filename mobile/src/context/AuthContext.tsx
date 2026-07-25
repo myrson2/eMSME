@@ -5,6 +5,7 @@ import client from '../api/client';
 export type OnboardingStep = 
   | 'EGOV_SSO'
   | 'EFACIAL'
+  | 'SMS_OTP'
   | 'EVERIFY'
   | 'BUSINESS_PROFILE'
   | 'BUSINESS_VERIFY'

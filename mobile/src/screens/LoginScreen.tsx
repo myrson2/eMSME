@@ -1,35 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StatusBar, Alert } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useEGovAuth } from '../hooks/useEGovAuth';
+import { useSpringEntrance, useBreathingPulse, useScalePulse } from '../lib/animations';
+import { colors, text, spacing, radius, shadows, fonts } from '../lib/theme';
+import PressableButton from '../components/ui/PressableButton';
+import FlagAccent from '../components/ui/FlagAccent';
+import { memo, useEffect } from 'react';
+import { cancelAnimation } from 'react-native-reanimated';
 
-const PulsingRing = ({ delay, size, filled }: { delay: number; size: number; filled?: boolean }) => {
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(filled ? 0.08 : 0.25);
+// ---------------------------------------------------------------------------
+// Isolated pulsing ring — perpetual animation in leaf component
+// ---------------------------------------------------------------------------
+interface PulsingRingProps {
+  delay: number;
+  size: number;
+  color?: string;
+  fillOpacity?: number;
+}
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      scale.value = withRepeat(
-        withTiming(1.35, { duration: 3500, easing: Easing.inOut(Easing.sin) }),
-        -1,
-        true
-      );
-      opacity.value = withRepeat(
-        withTiming(filled ? 0.02 : 0.08, { duration: 3500, easing: Easing.inOut(Easing.sin) }),
-        -1,
-        true
-      );
-    }, delay);
-    return () => clearTimeout(timeout);
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
+const PulsingRing = memo(({ delay, size, color = colors.gold, fillOpacity }: PulsingRingProps) => {
+  const animStyle = useBreathingPulse({
+    minOpacity: fillOpacity ? fillOpacity * 0.25 : 0.04,
+    maxOpacity: fillOpacity ?? 0.18,
+    duration: 3200,
+  });
 
   return (
     <Animated.View
@@ -39,22 +37,30 @@ const PulsingRing = ({ delay, size, filled }: { delay: number; size: number; fil
           width: size,
           height: size,
           borderRadius: size / 2,
-          borderWidth: filled ? 0 : 1.5,
-          borderColor: '#FCD116',
-          backgroundColor: filled ? 'rgba(252, 209, 22, 0.35)' : 'transparent',
+          borderWidth: fillOpacity ? 0 : 1,
+          borderColor: color,
+          backgroundColor: fillOpacity ? `${color}50` : 'transparent',
         },
-        animatedStyle,
+        animStyle,
       ]}
     />
   );
-};
+});
 
+PulsingRing.displayName = 'PulsingRing';
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
 export default function LoginScreen() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleCodeReceived = async (code: string) => {
+  const brandEntrance = useSpringEntrance({ delay: 80, distance: 20 });
+  const cardEntrance = useSpringEntrance({ delay: 280, distance: 32 });
+
+  const handleCodeReceived = useCallback(async (code: string) => {
     try {
       setLoading(true);
       setErrorMsg(null);
@@ -66,7 +72,7 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [login]);
 
   const { startAuthFlow, isReady } = useEGovAuth(handleCodeReceived);
 
@@ -75,160 +81,125 @@ export default function LoginScreen() {
     if (isReady) {
       startAuthFlow();
     } else {
-      // Fallback for when eGovPH client ID is not yet configured — useful for demo
       Alert.alert(
         'eGovPH Not Configured',
-        'Set EXPO_PUBLIC_EGOV_CLIENT_ID and EXPO_PUBLIC_EGOV_AUTH_URL in mobile/.env to enable live SSO.',
+        'Set EXPO_PUBLIC_EGOV_PARTNER_CODE and EXPO_PUBLIC_EGOV_SSO_URL in mobile/.env to enable live SSO.',
         [{ text: 'OK' }]
       );
     }
   };
 
   return (
-    <LinearGradient colors={['#1740DE', '#0A227A']} style={{ flex: 1 }}>
+    <LinearGradient
+      colors={['#1B4FDB', '#0D2E8F', '#091E64']}
+      locations={[0, 0.55, 1]}
+      style={{ flex: 1 }}
+    >
       <StatusBar barStyle="light-content" />
 
-      {/* Top — Branding area */}
+      {/* Branding area */}
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 }}>
-        <Animated.View entering={FadeInDown.delay(100).duration(600)} style={{ alignItems: 'center' }}>
-          {/* Philippine sun motif with pulsing glow */}
-          <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-            <PulsingRing delay={0} size={110} filled />
-            <PulsingRing delay={0} size={130} />
-            <PulsingRing delay={1500} size={170} />
-            <PulsingRing delay={3000} size={210} />
-            <View style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-              <Ionicons name="sunny" size={42} color="#FCD116" />
+        <Animated.View style={[{ alignItems: 'center' }, brandEntrance]}>
+          {/* Concentric pulsing rings — Philippine sun motif */}
+          <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 28 }}>
+            <PulsingRing delay={0} size={100} fillOpacity={0.12} />
+            <PulsingRing delay={0} size={128} />
+            <PulsingRing delay={1600} size={160} />
+            <PulsingRing delay={3200} size={196} />
+
+            {/* Icon core — double-bezel */}
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 24,   // squircle, not circle
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.2)',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Ionicons name="sunny" size={30} color={colors.gold} />
+              </View>
             </View>
           </View>
 
-          <Text style={{
-            fontFamily: 'Poppins_700Bold',
-            fontSize: 42,
-            color: '#FFFFFF',
-            letterSpacing: 1,
-          }}>
+          <Text style={{ fontFamily: fonts.display, fontSize: 44, color: colors.white, letterSpacing: -1 }}>
             eMSME
           </Text>
-          <Text style={{
-            fontFamily: 'Inter_400Regular',
-            fontSize: 15,
-            color: 'rgba(255,255,255,0.75)',
-            marginTop: 4,
-          }}>
+          <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: 'rgba(255,255,255,0.65)', marginTop: 6, letterSpacing: 0.2 }}>
             eGovPH Service Module
           </Text>
         </Animated.View>
       </View>
 
-      {/* Bottom — Login card */}
+      {/* Login card — slides up from bottom */}
       <Animated.View
-        entering={FadeInUp.delay(300).duration(600)}
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderTopLeftRadius: 28,
-          borderTopRightRadius: 28,
-          paddingHorizontal: 32,
-          paddingTop: 40,
-          paddingBottom: 48,
-          overflow: 'hidden',
-        }}
+        style={[
+          {
+            backgroundColor: colors.surfaceRaised,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            paddingHorizontal: 32,
+            paddingTop: 44,
+            paddingBottom: 52,
+            overflow: 'hidden',
+          },
+          cardEntrance,
+        ]}
       >
-        {/* eGovPH flag accent bar */}
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 6,
-          flexDirection: 'row',
-        }}>
-          <View style={{ flex: 1, backgroundColor: '#1740DE' }} />
-          <View style={{ flex: 1, backgroundColor: '#E63B27' }} />
-          <View style={{ flex: 1, backgroundColor: '#FCD116' }} />
-        </View>
+        <FlagAccent height={4} />
 
-        <Text style={{
-          fontFamily: 'Poppins_700Bold',
-          fontSize: 22,
-          color: '#1A1A1A',
-          marginBottom: 8,
-        }}>
+        <Text style={[text.h2, { color: colors.ink, marginBottom: 8 }]}>
           Mag-login
         </Text>
-        <Text style={{
-          fontFamily: 'Inter_400Regular',
-          fontSize: 14,
-          color: '#4A4A4A',
-          marginBottom: 28,
-          lineHeight: 20,
-        }}>
+        <Text style={[text.body, { color: colors.body, marginBottom: 32, lineHeight: 22 }]}>
           Gamitin ang iyong eGovPH account para i-access ang MSME financial services.
         </Text>
 
         {errorMsg && (
-          <View style={{
-            backgroundColor: '#FEF2F2',
-            borderRadius: 10,
-            padding: 12,
-            marginBottom: 16,
-            flexDirection: 'row',
-            gap: 8,
-            alignItems: 'center',
-          }}>
-            <Ionicons name="warning" size={16} color="#E63B27" />
-            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: '#E63B27', flex: 1 }}>
+          <View
+            style={{
+              backgroundColor: colors.signalMuted,
+              borderRadius: radius.sm,
+              padding: 14,
+              marginBottom: 20,
+              flexDirection: 'row',
+              gap: 10,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: `${colors.signal}30`,
+            }}
+          >
+            <Ionicons name="warning-outline" size={16} color={colors.signal} />
+            <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.signal, flex: 1, lineHeight: 20 }}>
               {errorMsg}
             </Text>
           </View>
         )}
 
-        <TouchableOpacity
+        <PressableButton
           onPress={handleLogin}
-          activeOpacity={0.85}
-          disabled={loading}
-          style={{
-            backgroundColor: loading ? '#EFF1FD' : '#1740DE',
-            borderRadius: 12,
-            paddingVertical: 16,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 10,
-            borderWidth: 1,
-            borderColor: loading ? 'transparent' : 'rgba(252, 209, 22, 0.4)',
-          }}
-        >
-          {loading ? (
-            <ActivityIndicator color="#1740DE" />
-          ) : (
-            <>
-              <Ionicons name="shield-checkmark" size={20} color="#FCD116" />
-              <Text style={{
-                fontFamily: 'Poppins_600SemiBold',
-                fontSize: 15,
-                color: '#FFFFFF',
-              }}>
-                Log in using eGovPH
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+          label="Log in using eGovPH"
+          icon="shield-checkmark"
+          trailingIcon="arrow-forward"
+          loading={loading}
+          variant="primary"
+          size="lg"
+        />
 
-        <Text style={{
-          fontFamily: 'Inter_400Regular',
-          fontSize: 12,
-          color: '#9CA3AF',
-          textAlign: 'center',
-          marginTop: 20,
-        }}>
+        <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.caption, textAlign: 'center', marginTop: 24 }}>
           Powered by eGovPH  •  Secured with eVerify
         </Text>
       </Animated.View>

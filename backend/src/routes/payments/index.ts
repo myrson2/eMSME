@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import getDb from '../../db';
-import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth';
+import getDb from '../../db/index.js';
+import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
 
 const router = Router();
 

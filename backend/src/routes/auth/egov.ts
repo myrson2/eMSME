@@ -21,8 +21,8 @@ const router = Router();
 // =====================================================================
 
 const EGOV_BASE_URL = process.env.EGOV_BASE_URL || 'https://hackathon-sso.e.gov.ph';
-const PARTNER_CODE = process.env.EGOV_CLIENT_ID || '';
-const PARTNER_SECRET = process.env.EGOV_CLIENT_SECRET || '';
+const PARTNER_CODE = process.env.EGOV_PARTNER_CODE || '';
+const PARTNER_SECRET = process.env.EGOV_PARTNER_SECRET || '';
 
 export interface ExchangeRequestBody {
   exchange_code?: string;

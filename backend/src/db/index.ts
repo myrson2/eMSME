@@ -48,6 +48,7 @@ async function initializeSchema(db: Database): Promise<void> {
       user_id TEXT PRIMARY KEY,
       egov_sso_completed INTEGER DEFAULT 0,
       efacial_completed INTEGER DEFAULT 0,
+      sms_otp_verified INTEGER DEFAULT 0,
       everify_completed INTEGER DEFAULT 0,
       business_profile_id TEXT,
       business_verify_completed INTEGER DEFAULT 0,
@@ -145,6 +146,14 @@ async function initializeSchema(db: Database): Promise<void> {
       received_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // --- Migrations for existing databases ---
+  try {
+    await db.exec(`ALTER TABLE onboarding_progress ADD COLUMN sms_otp_verified INTEGER DEFAULT 0`);
+    console.log('[DB Migration] Added sms_otp_verified column.');
+  } catch (_) {
+    // Column already exists — safe to ignore
+  }
 }
 
 export default getDb;

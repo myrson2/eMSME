@@ -11,6 +11,7 @@ import loanRouter from './routes/loans/index.js';
 import paymentRouter from './routes/payments/index.js';
 import businessRouter from './routes/business/index.js';
 import documentsRouter from './routes/documents/index.js';
+import notificationsRouter from './routes/notifications.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api/loans', loanRouter);
 app.use('/api/payments/egovpay', paymentRouter);
 app.use('/api/business-profiles', businessRouter);
 app.use('/api/documents', documentsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

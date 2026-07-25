@@ -1,9 +1,9 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import getDb from '../../db';
-import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth';
-import { requireStepComplete } from '../../middleware/requireOnboardingStep';
-import { routeBusinessVerification } from '../../services/businessVerification';
+import getDb from '../../db/index.js';
+import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
+import { requireStepComplete } from '../../middleware/requireOnboardingStep.js';
+import { routeBusinessVerification } from '../../services/businessVerification.js';
 
 const router = Router();
 
@@ -22,6 +22,7 @@ router.get('/status', authenticateToken, async (req: AuthenticatedRequest, res: 
         steps: {
           EGOV_SSO: 'PENDING',
           EFACIAL: 'LOCKED',
+          SMS_OTP: 'LOCKED',
           EVERIFY: 'LOCKED',
           BUSINESS_PROFILE: 'LOCKED',
           BUSINESS_VERIFY: 'LOCKED',
@@ -34,17 +35,18 @@ router.get('/status', authenticateToken, async (req: AuthenticatedRequest, res: 
     const steps = {
       EGOV_SSO: p.egov_sso_completed ? 'COMPLETE' : 'PENDING',
       EFACIAL: p.egov_sso_completed ? (p.efacial_completed ? 'COMPLETE' : 'PENDING') : 'LOCKED',
-      EVERIFY: p.efacial_completed ? (p.everify_completed ? 'COMPLETE' : 'PENDING') : 'LOCKED',
+      SMS_OTP: p.efacial_completed ? (p.sms_otp_verified ? 'COMPLETE' : 'PENDING') : 'LOCKED',
+      EVERIFY: p.sms_otp_verified ? (p.everify_completed ? 'COMPLETE' : 'PENDING') : 'LOCKED',
       BUSINESS_PROFILE: p.everify_completed ? (p.business_profile_id ? 'COMPLETE' : 'PENDING') : 'LOCKED',
       BUSINESS_VERIFY: p.business_profile_id ? (p.business_verify_completed ? 'COMPLETE' : 'PENDING') : 'LOCKED',
       FINANCIALS: p.business_verify_completed ? (p.financials_completed ? 'COMPLETE' : 'PENDING') : 'LOCKED',
     };
 
     const completedCount = Object.values(steps).filter(s => s === 'COMPLETE').length;
-    const percentComplete = Math.round((completedCount / 6) * 100);
+    const percentComplete = Math.round((completedCount / 7) * 100);
 
     const pendingPair = Object.entries(steps).find(([, v]) => v === 'PENDING');
-    const currentStep = pendingPair ? pendingPair[0] : (completedCount === 6 ? 'COMPLETE' : 'EGOV_SSO');
+    const currentStep = pendingPair ? pendingPair[0] : (completedCount === 7 ? 'COMPLETE' : 'EGOV_SSO');
 
     res.status(200).json({ success: true, currentStep, percentComplete, steps });
   } catch (err) {

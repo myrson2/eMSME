@@ -1,9 +1,9 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import getDb from '../../db';
-import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth';
-import { generateAmortizationSchedule } from '../../services/amortization';
-import { assessLoan } from '../../services/creditEngine';
+import getDb from '../../db/index.js';
+import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
+import { generateAmortizationSchedule } from '../../services/amortization.js';
+import { assessLoan } from '../../services/creditEngine.js';
 
 const router = Router();
 
@@ -93,13 +93,13 @@ router.get('/my', authenticateToken, async (req: AuthenticatedRequest, res: Resp
 
     const loans = await db.all('SELECT * FROM loan_applications WHERE applicant_id = ? ORDER BY created_at DESC', [applicantId]);
 
-    const formattedLoans = loans.map(l => ({
+    const userLoans = loans.map((l: any) => ({
       ...l,
       creditScore: l.credit_score_json ? JSON.parse(l.credit_score_json) : null,
       rejectionReasons: l.rejection_reasons_json ? JSON.parse(l.rejection_reasons_json) : null,
     }));
 
-    res.status(200).json({ success: true, loans: formattedLoans });
+    res.status(200).json({ success: true, loans: userLoans });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Failed to retrieve loans.' });
   }

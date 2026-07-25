@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import supportRouter from './support';
 
 const router = Router();
 
@@ -11,5 +12,8 @@ router.get('/health', (_req, res) => {
 router.get('/message', (_req, res) => {
   res.json({ message: 'Hello from Express Backend!' });
 });
+
+// Mount support routes (eGovAI)
+router.use('/support', supportRouter);
 
 export default router;

@@ -1,7 +1,7 @@
 # Implementation Plan & Code Deliverables: eMessage SMS (`emessage-sms`)
 
 ## 1. Task Checklist
-- [x] **Environment Setup:** Add `EMESSAGE_API_KEY`, `EMESSAGE_CLIENT_SECRET`, and `EMESSAGE_API_URL` to `backend/.env.example`.
+- [x] **Environment Setup:** Add `EMESSAGE_API_TOKEN` and `EMESSAGE_API_URL` to `backend/.env.example`.
 - [x] **Backend SMS Router:** Create Express routes `POST /api/auth/sms/send-otp` and `POST /api/auth/sms/verify-otp` with SHA-256 Redis hashing and attempt limiting.
 - [x] **Mobile UI Component:** Create React Native component `EGovSMSOTPModal.tsx` with 6-digit input cells, countdown timer, and resend trigger.
 - [x] **Rate Limiting & Security:** Enforce 3 attempts per OTP window and 60-second cooldown timer.
@@ -13,9 +13,8 @@
 ### `backend/.env.example`
 ```env
 # eMessage SMS Gateway Configuration
-EMESSAGE_API_KEY=your_staging_emessage_api_key
-EMESSAGE_CLIENT_SECRET=your_staging_emessage_client_secret
-EMESSAGE_API_URL=https://api.egov.gov.ph/v1/sms/send
+EMESSAGE_API_URL=https://ws-message.e.gov.ph
+EMESSAGE_API_TOKEN=your_staging_emessage_api_token
 ```
 
 ---

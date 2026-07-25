@@ -18,7 +18,7 @@ sequenceDiagram
     Note over Express: Generate 6-digit random OTP (e.g. 582910)\nCompute SHA-256 hash
     Express->>Redis: SET EX otp:hash:<mobileNumber> (TTL: 300s, attempts: 0)
     
-    Express->>eMessage: POST /v1/sms/send (Headers: X-API-Key, X-Client-Secret)\nPayload: { to: mobileNumber, message: "Your eMSME code is 582910. Valid for 5 mins." }
+    Express->>eMessage: POST /messaging/v1/sms/push (Headers: X-EMESSAGE-Auth)\nPayload: { number: mobileNumber, message: "Your eMSME code is 582910. Valid for 5 mins." }
     eMessage-->>Express: 200 OK { messageId: "msg_99182", status: "QUEUED" }
     Express-->>MobileApp: 200 OK { success: true, messageId: "msg_99182", expiresAt: 300 }
     MobileApp-->>User: Displays OTP Modal with 60s Cooldown Timer
@@ -49,8 +49,8 @@ sequenceDiagram
 
 ### 2.1 Endpoint Specification (Integration Tab)
 - **HTTP Method:** `POST`
-- **Gateway URL:** `https://api.egov.gov.ph/v1/sms/send`
-- **Authentication:** Headers (`X-API-Key: <EMESSAGE_API_KEY>`, `X-Client-Secret: <EMESSAGE_CLIENT_SECRET>`)
+- **Gateway URL:** `https://ws-message.e.gov.ph/messaging/v1/sms/push`
+- **Authentication:** Headers (`X-EMESSAGE-Auth: <EMESSAGE_API_TOKEN>`)
 
 ### 2.2 Schemas Tab
 
@@ -62,13 +62,11 @@ sequenceDiagram
 }
 ```
 
-#### Upstream eMessage Gateway Request Payload (`POST https://api.egov.gov.ph/v1/sms/send`)
+#### Upstream eMessage Gateway Request Payload (`POST https://ws-message.e.gov.ph/messaging/v1/sms/push`)
 ```json
 {
-  "recipient": "+639171234567",
-  "sender_id": "eMSME-eGov",
-  "message": "Your eMSME verification code is 582910. Valid for 5 minutes. Do not share this code with anyone.",
-  "priority": "HIGH"
+  "number": "+639171234567",
+  "message": "Your eMSME verification code is 582910. Valid for 5 minutes. Do not share this code with anyone."
 }
 ```
 

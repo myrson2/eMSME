@@ -1,37 +1,42 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Platform } from 'react-native';
+import { View, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import HomeStack from './HomeStack';
 import AidScreen from '../screens/AidScreen';
 import ScanScreen from '../screens/ScanScreen';
 import DocumentsScreen from '../screens/DocumentsScreen';
 import AccountScreen from '../screens/AccountScreen';
+import { colors, fonts } from '../lib/theme';
 
 const Tab = createBottomTabNavigator();
-
-const ACTIVE_COLOR = '#1740DE';
-const INACTIVE_COLOR = '#4A4A4A';
 
 export default function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: ACTIVE_COLOR,
-        tabBarInactiveTintColor: INACTIVE_COLOR,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.caption,
         tabBarStyle: {
+          position: 'absolute', // Required for blur effect to show content underneath
           height: Platform.OS === 'ios' ? 88 : 68,
           paddingTop: 8,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E2E5F0',
+          borderTopWidth: 0,
           elevation: 0,
-          shadowOpacity: 0,
+          backgroundColor: 'transparent',
         },
+        tabBarBackground: () => (
+          <BlurView 
+            tint="light" 
+            intensity={80} 
+            style={StyleSheet.absoluteFill} 
+          />
+        ),
         tabBarLabelStyle: {
-          fontFamily: 'Poppins_600SemiBold',
+          fontFamily: fonts.medium,
           fontSize: 11,
           marginTop: 2,
         },
@@ -55,6 +60,7 @@ export default function MainTabs() {
         name="Aid"
         component={AidScreen}
         options={{
+          unmountOnBlur: true,
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'heart' : 'heart'}
@@ -75,11 +81,11 @@ export default function MainTabs() {
                 width: 52,
                 height: 52,
                 borderRadius: 26,
-                backgroundColor: ACTIVE_COLOR,
+                backgroundColor: colors.primary,
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginTop: -20,
-                shadowColor: '#1740DE',
+                shadowColor: colors.primary,
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
@@ -95,6 +101,7 @@ export default function MainTabs() {
         name="Documents"
         component={DocumentsScreen}
         options={{
+          unmountOnBlur: true,
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'document-text' : 'document-text'}
@@ -108,6 +115,7 @@ export default function MainTabs() {
         name="Account"
         component={AccountScreen}
         options={{
+          unmountOnBlur: true,
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'person' : 'person'}

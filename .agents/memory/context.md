@@ -180,3 +180,18 @@
 ## Session Handoff (2026-07-22)
 - **Completed:** Overhauled all 5 onboarding screens ([FaceLivenessScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/FaceLivenessScreen.tsx), [EVerifyScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/EVerifyScreen.tsx), [BusinessProfileScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/BusinessProfileScreen.tsx), [BusinessVerificationScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/BusinessVerificationScreen.tsx), [FinancialsScreen.tsx](file:///C:/Users/Yen/eMSME/mobile/src/screens/FinancialsScreen.tsx)) with loading spinners, visual step indicators (biometric oval frame, PhilSys ID card, DTI/SEC/BIR checklist), step-by-step verification progress timers, and comprehensive `try/catch` error handling with `Alert.alert` dialogs.
 - **Verification:** Both `npm test` backend suite and `@babel/core` compilation across all 5 screens completed with 100% success and 0 errors.
+
+## Session Handoff (2026-07-23)
+- **Completed:** Aligned eGov SSO spec documents (`architecture.md`, `spec.md`, `implementation.md`, `decisions.md`) with the actual hackathon API. Added ADR 004 and 005 to document the custom token exchange and demo bypass.
+- **Environment:** Updated `backend/.env.example` and `mobile/.env.example` to use `EGOV_PARTNER_CODE` and `EGOV_PARTNER_SECRET` and consolidated token/userinfo endpoints under `EGOV_BASE_URL`. Live code in `egov.ts` and `useEGovAuth.ts` modified to match new env var names.
+
+## Session Handoff (2026-07-24)
+- **Completed:** Fully redesigned the mobile app frontend (15 screens) to eliminate AI-generated aesthetics and apply a premium, high-agency design system.
+- **Design System:** Implemented `Outfit` and `GeistMono` typography, calibrated the color palette (`ink`, `surface`, `primaryMuted`), and applied concentric corner radii.
+- **Motion & UI Kit:** Created spring-physics-based Reanimated components (`PressableButton`, `Skeleton`, `StatusDot`, `OnboardingField`, `EmptyState`) that use scale and translation rather than just opacity.
+- **Implementation Details:** Replaced circular avatars with squircles, removed all text emojis in favor of vector icons and status dots, replaced generic `ActivityIndicator` spinners with GPU-accelerated skeleton loaders, and applied staggered list animations across all screens (`HomeScreen`, `AidScreen`, `DocumentsScreen`, etc.).
+
+## Session Handoff (2026-07-25)
+- **Impeccable Integration & Init:** Created `PRODUCT.md` capturing product truth, target audiences (Philippine MSMEs), operating context (`mobile/` task-focused Operate mode), positioning, and institutional principles.
+- **Typography Migration:** Replaced `Outfit` & `GeistMono` with **Plus Jakarta Sans** (display/sans) and **JetBrains Mono** (mono/data). Installed `@expo-google-fonts/plus-jakarta-sans` and `@expo-google-fonts/jetbrains-mono`, updated `theme.ts`, `tailwind.config.js`, and `App.tsx`.
+- **Native Audit & Remediation:** Ran an Impeccable Native Audit (initial score: 9/20). Implemented P0/P1 fixes: dynamic safe area top padding (`useSafeAreaInsets().top`) across headers, `KeyboardAvoidingView` on form screens (`ApplyLoanScreen`, etc.), and VoiceOver accessibility props (`accessible`, `accessibilityRole`, `accessibilityLabel`) on core UI components (`PressableButton`).

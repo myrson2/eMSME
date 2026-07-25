@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import AuthStack from './AuthStack';
-import MainTabs from './MainTabs';
+import AppStack from './AppStack';
 import { View, Text, ActivityIndicator } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -39,7 +39,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {isFullyOnboarded ? <MainTabs /> : <AuthStack />}
+      {isFullyOnboarded ? <AppStack /> : <AuthStack />}
     </NavigationContainer>
   );
 }

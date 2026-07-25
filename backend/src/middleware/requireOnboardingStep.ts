@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from './auth';
-import getDb from '../db';
+import { AuthenticatedRequest } from './auth.js';
+import getDb from '../db/index.js';
 
 export type OnboardingStep =
   | 'EGOV_SSO'

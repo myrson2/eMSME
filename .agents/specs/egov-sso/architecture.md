@@ -19,22 +19,22 @@ sequenceDiagram
     ExpoAuth-->>MobileApp: Redirects via Deep Link with ?code=exchange_code
     
     MobileApp->>Express: POST /api/auth/egov/exchange { exchange_code }
-    Note over Express: Validate request body & load process.env.EGOV_CLIENT_SECRET
+    Note over Express: Validate request body & load process.env.EGOV_PARTNER_SECRET
     
-    Express->>eGovOAuth: POST EGOV_TOKEN_URL (grant_type, code, client_id, client_secret)
+    Express->>eGovOAuth: POST /api/token (exchange_code, scope, partner_code, partner_secret)
     alt Token Exchange Fails (Expired / Invalid Code)
-        eGovOAuth-->>Express: 400 Bad Request / 401 Unauthorized
-        Express-->>MobileApp: 400/401 { success: false, message: "Invalid or expired exchange code" }
+        eGovOAuth-->>Express: 422 Unprocessable Entity / 403 Forbidden
+        Express-->>MobileApp: 422/403 { success: false, message: "Invalid or expired exchange code" }
         MobileApp-->>User: Displays error notification
     else Token Exchange Succeeds
-        eGovOAuth-->>Express: 200 OK { access_token, token_type, expires_in }
+        eGovOAuth-->>Express: 200 OK { access_token }
         
-        Express->>eGovUserInfo: GET EGOV_USERINFO_URL (Headers: Authorization: Bearer access_token)
+        Express->>eGovUserInfo: POST /api/partner/sso_authentication (Headers: Authorization: Bearer access_token)
         alt UserInfo Fetch Fails
             eGovUserInfo-->>Express: 500 / 401 Error
             Express-->>MobileApp: 502 Bad Gateway { success: false, message: "Failed to fetch user profile" }
         else UserInfo Fetch Succeeds
-            eGovUserInfo-->>Express: 200 OK { sub, first_name, last_name, email, ... }
+            eGovUserInfo-->>Express: 200 OK { status, message, data: { uniqid, first_name, last_name, email, ... } }
             Note over Express: Create/Find User record & Generate Session Token / JWT
             Express-->>MobileApp: 200 OK + Set-Cookie (HTTP-Only, Secure, SameSite=Lax)\n{ success: true, user: { id, email, name } }
             MobileApp-->>User: Navigates to User Dashboard
@@ -54,8 +54,8 @@ sequenceDiagram
 ### Backend (`backend/src/routes/auth/egov.ts`)
 - Implements `POST /api/auth/egov/exchange` endpoint.
 - Enforces strict input validation on `exchange_code`.
-- Performs server-to-server POST to `EGOV_TOKEN_URL` including `EGOV_CLIENT_SECRET`.
-- Performs GET request to `EGOV_USERINFO_URL` using `access_token`.
+- Performs server-to-server POST to `EGOV_BASE_URL/api/token` including `EGOV_PARTNER_SECRET`.
+- Performs POST request to `EGOV_BASE_URL/api/partner/sso_authentication` using `access_token`.
 - Creates secure HTTP-only cookie (`emsme_session`) containing session payload.
 - Returns clean JSON response without leaking access tokens or backend secrets.
 
@@ -68,26 +68,31 @@ sequenceDiagram
 }
 ```
 
-### eGovPH Token Response (`EGOV_TOKEN_URL`)
+### eGovPH Token Response (`/api/token`)
 ```json
 {
-  "access_token": "eyJhbGciOi...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "scope": "openid profile email"
+  "access_token": "eyJhbGciOi..."
 }
 ```
 
-### eGovPH UserInfo Response (`EGOV_USERINFO_URL`)
+### eGovPH UserInfo Response (`/api/partner/sso_authentication`)
 ```json
 {
-  "sub": "egov-user-98765",
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "middle_name": "Santos",
-  "email": "juan.delacruz@example.gov.ph",
-  "email_verified": true,
-  "mobile_number": "+639171234567"
+  "status": 200,
+  "message": "OK",
+  "data": {
+    "uniqid": "MVPCBEUVCGPZR",
+    "email": "josie@yopmail.com",
+    "birth_date": "1990-01-01",
+    "first_name": "JOSIE",
+    "middle_name": "SANTOS",
+    "last_name": "DELA CRUZ",
+    "mobile": "+639090000000",
+    "address": "1123 RIZAL ST., POBLACION, CITY OF ALAMINOS, PANGASINAN, PHILIPPINES",
+    "gender": "female",
+    "nationality": "Filipino",
+    "photo": "https://staging-files.oueg.info/staging/..."
+  }
 }
 ```
 
@@ -105,7 +110,7 @@ sequenceDiagram
 ```
 
 ## 4. Security Guardrails & Cookies
-- **Zero Client-Side Secret Exposure:** `EGOV_CLIENT_SECRET` must ONLY be referenced in `backend/` via `process.env.EGOV_CLIENT_SECRET`.
+- **Zero Client-Side Secret Exposure:** `EGOV_PARTNER_SECRET` must ONLY be referenced in `backend/` via `process.env.EGOV_PARTNER_SECRET`.
 - **Session Cookie Policy:**
   - `HttpOnly`: `true` (Prevents XSS theft)
   - `Secure`: `true` in production (`process.env.NODE_ENV === 'production'`)

@@ -1,20 +1,100 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { View, Text, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import client from '../api/client';
+import { useSpringEntrance } from '../lib/animations';
+import { colors, text, spacing, radius, shadows, fonts } from '../lib/theme';
+import PressableButton from '../components/ui/PressableButton';
 
+// ---------------------------------------------------------------------------
+// Field component — consistent label/input/error structure
+// ---------------------------------------------------------------------------
+interface FieldProps {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder: string;
+  keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
+  multiline?: boolean;
+  prefix?: string;  // e.g. "₱" for currency fields
+}
+
+function Field({ label, value, onChangeText, placeholder, keyboardType = 'default', multiline, prefix }: FieldProps) {
+  return (
+    <View style={{ marginBottom: 20 }}>
+      <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.body, marginBottom: 8, letterSpacing: 0.1 }}>
+        {label}
+      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: multiline ? 'flex-start' : 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: radius.sm,
+          backgroundColor: colors.surfaceRaised,
+          overflow: 'hidden',
+        }}
+      >
+        {prefix && (
+          <View
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 14,
+              borderRightWidth: 1,
+              borderRightColor: colors.borderSubtle,
+              backgroundColor: colors.surface,
+            }}
+          >
+            <Text style={{ fontFamily: fonts.mono, fontSize: 15, color: colors.body }}>
+              {prefix}
+            </Text>
+          </View>
+        )}
+        <TextInput
+          style={{
+            flex: 1,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            fontFamily: prefix ? fonts.mono : fonts.sans,
+            fontSize: 14,
+            color: colors.ink,
+            minHeight: multiline ? 88 : undefined,
+            textAlignVertical: multiline ? 'top' : 'center',
+          }}
+          placeholder={placeholder}
+          placeholderTextColor={colors.placeholder}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+          multiline={multiline}
+        />
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
 export default function ApplyLoanScreen() {
   const navigation = useNavigation();
-  const [requestedAmount, setRequestedAmount] = useState('50000');
-  const [tenorMonths, setTenorMonths] = useState('12');
-  const [purpose, setPurpose] = useState('Inventory expansion for holiday season');
+  const insets = useSafeAreaInsets();
+  const [requestedAmount, setRequestedAmount] = useState('');
+  const [tenorMonths, setTenorMonths] = useState('');
+  const [purpose, setPurpose] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const headerEntrance = useSpringEntrance({ delay: 0, distance: 12 });
+  const formEntrance = useSpringEntrance({ delay: 120, distance: 16 });
+  const ctaEntrance = useSpringEntrance({ delay: 240, distance: 12 });
 
   const handleSubmit = async () => {
     if (!requestedAmount || !tenorMonths || !purpose) {
-      Alert.alert('Missing Fields', 'Please complete all loan application fields.');
+      Alert.alert('Missing fields', 'Please complete all loan application fields.');
       return;
     }
 
@@ -23,106 +103,104 @@ export default function ApplyLoanScreen() {
       const res = await client.post('/loans/apply', {
         requestedAmount: parseFloat(requestedAmount),
         tenorMonths: parseInt(tenorMonths, 10),
-        purpose
+        purpose,
       });
 
       if (res.data.success) {
-        Alert.alert('Success', 'Loan application submitted successfully! Credit assessment is in progress.', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
+        Alert.alert(
+          'Application submitted',
+          'Your loan application has been submitted. Credit assessment is underway.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
       } else {
-        Alert.alert('Submission Failed', res.data.message);
+        Alert.alert('Submission failed', res.data.message);
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Server error submitting loan application.';
-      Alert.alert('Submission Error', msg);
+      Alert.alert('Submission error', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderInput = (label: string, value: string, setValue: (val: string) => void, placeholder: string, keyboardType: any = 'default', multiline: boolean = false) => (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: '#6B7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {label}
-      </Text>
-      <TextInput 
-        style={{
-          borderWidth: 1,
-          borderColor: '#E2E5F0',
-          borderRadius: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          fontFamily: 'Inter_400Regular',
-          fontSize: 14,
-          color: '#1A1A1A',
-          backgroundColor: '#F9FAFB',
-          minHeight: multiline ? 80 : undefined,
-          textAlignVertical: multiline ? 'top' : 'center',
-        }}
-        placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
-        value={value}
-        onChangeText={setValue}
-        keyboardType={keyboardType}
-        multiline={multiline}
-      />
-    </View>
-  );
-
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 56, paddingHorizontal: 24, paddingBottom: 16 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
-          <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
-        </TouchableOpacity>
-        <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 20, color: '#1A1A1A' }}>
-          Apply for Loan
-        </Text>
-      </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, backgroundColor: colors.surface }}
+    >
+      {/* Header */}
+      <Animated.View
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingTop: Math.max(insets.top + 12, 48),
+            paddingHorizontal: spacing.screen,
+            paddingBottom: 18,
+            backgroundColor: colors.surfaceRaised,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.borderSubtle,
+          },
+          headerEntrance,
+        ]}
+      >
+        <Ionicons
+          name="arrow-back"
+          size={22}
+          color={colors.ink}
+          onPress={() => navigation.goBack()}
+          style={{ marginRight: 14, padding: 4 }}
+        />
+        <Text style={[text.h3, { color: colors.ink }]}>Apply for a loan</Text>
+      </Animated.View>
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }}>
-        <Animated.View entering={FadeInDown.duration(500)} style={{ marginBottom: 24 }}>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: '#4A4A4A', lineHeight: 20 }}>
-            Enter your desired loan amount and terms. Your application will be assessed by our credit engine.
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.screen }}>
+        {/* Context */}
+        <Animated.View style={[{ marginBottom: 28 }, formEntrance]}>
+          <Text style={[text.body, { color: colors.body, lineHeight: 22 }]}>
+            Enter your desired loan amount and terms. Your application will be assessed by our credit engine and matched with partner lenders.
           </Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-          {renderInput('Requested Amount (₱)', requestedAmount, setRequestedAmount, 'e.g. 50000', 'numeric')}
-          {renderInput('Tenor (Months)', tenorMonths, setTenorMonths, 'e.g. 12', 'numeric')}
-          {renderInput('Loan Purpose', purpose, setPurpose, 'What will you use the funds for?', 'default', true)}
+        {/* Form */}
+        <Animated.View style={formEntrance}>
+          <Field
+            label="Requested amount"
+            value={requestedAmount}
+            onChangeText={setRequestedAmount}
+            placeholder="50,000"
+            keyboardType="numeric"
+            prefix="₱"
+          />
+          <Field
+            label="Tenor (months)"
+            value={tenorMonths}
+            onChangeText={setTenorMonths}
+            placeholder="12"
+            keyboardType="numeric"
+          />
+          <Field
+            label="Loan purpose"
+            value={purpose}
+            onChangeText={setPurpose}
+            placeholder="Describe what you will use the funds for"
+            multiline
+          />
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(200).duration(500)} style={{ marginTop: 32 }}>
-          <TouchableOpacity 
-            style={{
-              backgroundColor: loading ? '#EFF1FD' : '#1740DE',
-              borderRadius: 12,
-              paddingVertical: 16,
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 10,
-              borderWidth: 1,
-              borderColor: loading ? 'transparent' : 'rgba(252, 209, 22, 0.4)',
-            }}
+        {/* CTA */}
+        <Animated.View style={[{ marginTop: 16 }, ctaEntrance]}>
+          <PressableButton
             onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#1740DE" />
-            ) : (
-              <>
-                <Ionicons name="paper-plane" size={20} color="#FCD116" />
-                <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 15, color: '#FFFFFF' }}>
-                  Submit Application
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+            label="Submit application"
+            icon="paper-plane-outline"
+            trailingIcon="arrow-forward"
+            loading={loading}
+            variant="primary"
+            size="lg"
+          />
         </Animated.View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

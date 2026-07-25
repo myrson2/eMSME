@@ -6,7 +6,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 WebBrowser.maybeCompleteAuthSession();
 
 const EGOV_SSO_PORTAL = 'https://hackathon-sso.e.gov.ph';
-const PARTNER_CODE = process.env.EXPO_PUBLIC_EGOV_CLIENT_ID || 'HACKATHON_SSO';
+const PARTNER_CODE = process.env.EXPO_PUBLIC_EGOV_PARTNER_CODE || 'HACKATHON_SSO';
 
 export function useEGovAuth(onCodeReceived: (code: string) => Promise<void>) {
   const [isLoading, setIsLoading] = useState(false);

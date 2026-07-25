@@ -1,26 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useSpringEntrance } from '../lib/animations';
+import { colors, text, spacing, fonts } from '../lib/theme';
+import PressableButton from '../components/ui/PressableButton';
+import OnboardingField from '../components/ui/OnboardingField';
+
+// Step indicator
+function StepDot({ active, done }: { active: boolean; done: boolean }) {
+  return (
+    <View
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: done ? colors.primary : active ? colors.primary : colors.borderSubtle,
+        opacity: done || active ? 1 : 0.4,
+      }}
+    />
+  );
+}
 
 export default function BusinessProfileScreen() {
   const { checkSession } = useAuth();
-  const [businessName, setBusinessName] = useState('Dela Cruz General Trading');
-  const [businessType, setBusinessType] = useState('Sole Proprietorship');
-  const [registrationNumber, setRegistrationNumber] = useState('DTI-REG-99120');
-  const [birTin, setBirTin] = useState('123-456-789-000');
-  const [lguPermitNumber, setLguPermitNumber] = useState('MAYOR-PERMIT-2026-99');
-  const [industry, setIndustry] = useState('Retail & Wholesale');
+  const insets = useSafeAreaInsets();
+  const [businessName, setBusinessName] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [registrationNumber, setRegistrationNumber] = useState('');
+  const [birTin, setBirTin] = useState('');
+  const [lguPermitNumber, setLguPermitNumber] = useState('');
+  const [industry, setIndustry] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const headerEntrance = useSpringEntrance({ delay: 0, distance: 14 });
+  const formEntrance = useSpringEntrance({ delay: 140, distance: 16 });
+  const ctaEntrance = useSpringEntrance({ delay: 260, distance: 12 });
 
   const handleSubmit = async () => {
     if (!businessName || !registrationNumber || !birTin) {
-      Alert.alert('Missing Fields', 'Please complete Business Name, DTI/SEC Reg No., and BIR TIN.');
+      Alert.alert('Missing fields', 'Please complete Business Name, DTI/SEC Reg No., and BIR TIN.');
       return;
     }
-
     try {
       setLoading(true);
       const res = await client.post('/onboarding/business/profile', {
@@ -32,101 +56,66 @@ export default function BusinessProfileScreen() {
         lguPermitNumber,
         yearsInOperation: 3,
       });
-
       if (res.data.success) {
         await checkSession();
       } else {
-        Alert.alert('Save Failed', res.data.message || 'Failed to save business profile.');
+        Alert.alert('Save failed', res.data.message || 'Failed to save business profile.');
       }
     } catch (err: any) {
-      console.error('Business profile error:', err);
       const msg = err.response?.data?.message || err.message || 'Server error saving business profile.';
-      Alert.alert('Profile Error', msg);
+      Alert.alert('Profile error', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderInput = (label: string, value: string, setValue: (val: string) => void, placeholder: string) => (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: '#6B7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {label}
-      </Text>
-      <TextInput 
-        style={{
-          borderWidth: 1,
-          borderColor: '#E2E5F0',
-          borderRadius: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          fontFamily: 'Inter_400Regular',
-          fontSize: 14,
-          color: '#1A1A1A',
-          backgroundColor: '#F9FAFB',
-        }}
-        placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
-        value={value}
-        onChangeText={setValue}
-      />
-    </View>
-  );
-
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 32, paddingTop: 60, paddingBottom: 60 }}>
-        
-        <Animated.View entering={FadeInDown.duration(600)} style={{ marginBottom: 32 }}>
-          <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 26, color: '#1A1A1A', marginBottom: 8 }}>
-            Business Profile
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      style={{ flex: 1, backgroundColor: colors.surface }}
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.xl, paddingTop: Math.max(insets.top + 16, 64), paddingBottom: 64 }}>
+        {/* Step indicator */}
+        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 28 }}>
+          <StepDot active={false} done />
+          <StepDot active={false} done />
+          <StepDot active={true} done={false} />
+          <StepDot active={false} done={false} />
+        </View>
+
+        {/* Header */}
+        <Animated.View style={[{ marginBottom: 32 }, headerEntrance]}>
+          <Text style={[text.h1, { color: colors.ink, marginBottom: 8 }]}>
+            Business profile
           </Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: '#4A4A4A', lineHeight: 20 }}>
+          <Text style={[text.body, { color: colors.body, lineHeight: 22 }]}>
             Register your MSME credentials to unlock funding eligibility.
           </Text>
         </Animated.View>
-        
-        <Animated.View entering={FadeInDown.delay(150).duration(600)}>
-          {renderInput('Business Name', businessName, setBusinessName, 'Business Name')}
-          {renderInput('Business Type', businessType, setBusinessType, 'Sole Proprietorship / Corporation')}
-          {renderInput('DTI / SEC Registration No.', registrationNumber, setRegistrationNumber, 'DTI-REG-XXXXXX')}
-          {renderInput('BIR TIN Number', birTin, setBirTin, 'XXX-XXX-XXX-000')}
-          {renderInput('LGU Mayor Permit No.', lguPermitNumber, setLguPermitNumber, 'MAYOR-PERMIT-2026-XX')}
-          {renderInput('Industry Category', industry, setIndustry, 'e.g. Retail, Food')}
+
+        {/* Form */}
+        <Animated.View style={formEntrance}>
+          <OnboardingField label="Business name" value={businessName} onChangeText={setBusinessName} placeholder="Dela Cruz General Trading" />
+          <OnboardingField label="Business type" value={businessType} onChangeText={setBusinessType} placeholder="Sole Proprietorship / Corporation" />
+          <OnboardingField label="DTI / SEC registration no." value={registrationNumber} onChangeText={setRegistrationNumber} placeholder="DTI-REG-XXXXXX" mono />
+          <OnboardingField label="BIR TIN number" value={birTin} onChangeText={setBirTin} placeholder="XXX-XXX-XXX-000" mono />
+          <OnboardingField label="LGU mayor permit no." value={lguPermitNumber} onChangeText={setLguPermitNumber} placeholder="MAYOR-PERMIT-2026-XX" mono />
+          <OnboardingField label="Industry category" value={industry} onChangeText={setIndustry} placeholder="e.g. Retail, Food, Services" />
         </Animated.View>
-        
-        <Animated.View entering={FadeInUp.delay(300).duration(600)} style={{ marginTop: 24 }}>
-          <TouchableOpacity 
-            style={{
-              backgroundColor: loading ? '#EFF1FD' : '#1740DE',
-              borderRadius: 12,
-              paddingVertical: 16,
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 10,
-              borderWidth: 1,
-              borderColor: loading ? 'transparent' : 'rgba(252, 209, 22, 0.4)',
-            }}
+
+        {/* CTA */}
+        <Animated.View style={[{ marginTop: 8 }, ctaEntrance]}>
+          <PressableButton
             onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#1740DE" />
-            ) : (
-              <>
-                <Ionicons name="shield-checkmark" size={20} color="#FCD116" />
-                <Text style={{
-                  fontFamily: 'Poppins_600SemiBold',
-                  fontSize: 15,
-                  color: '#FFFFFF',
-                }}>
-                  Save & Continue
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+            label="Save & continue"
+            icon="shield-checkmark-outline"
+            trailingIcon="arrow-forward"
+            loading={loading}
+            variant="primary"
+            size="lg"
+          />
         </Animated.View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

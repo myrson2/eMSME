@@ -1,5 +1,5 @@
-import getDb from '../db';
-import { generateAmortizationSchedule } from './amortization';
+import getDb from '../db/index.js';
+import { generateAmortizationSchedule, InstallmentRow } from './amortization.js';
 import {
   scoreIdentity,
   scoreBusinessLegitimacy,
@@ -9,7 +9,8 @@ import {
   buildRejectionReasons,
   getBaseInterestRate,
   ScoringInputs,
-} from './creditScoringFunctions';
+} from './creditScoringFunctions.js';
+
 
 export async function assessLoan(loanId: string): Promise<void> {
   const db = await getDb();

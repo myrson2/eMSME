@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import crypto from 'crypto';
+import getDb from '../../db/index.js';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
 
 const router = Router();
@@ -72,10 +73,11 @@ router.post('/send-otp', authenticateToken, async (req: AuthenticatedRequest, re
       try {
         const smsRes = await axios.post(
           `${emessageUrl}/messaging/v1/sms/push`,
-          { number: mobileNumber, message },
+          { number: mobileNumber, message, token: emessageToken },
           {
             headers: {
               'X-EMESSAGE-Auth': emessageToken,
+              'Authorization': `Bearer ${emessageToken}`,
               'Content-Type': 'application/json',
             },
             timeout: 10000,
@@ -149,6 +151,20 @@ router.post('/verify-otp', authenticateToken, async (req: AuthenticatedRequest, 
 
     // Success — delete OTP record
     otpStore.delete(mobileNumber);
+    
+    // Update onboarding progress if applicable
+    if (req.user?.userId) {
+      try {
+        const db = await getDb();
+        await db.run(
+          `UPDATE onboarding_progress SET sms_otp_verified = 1, updated_at = ? WHERE user_id = ?`,
+          [new Date().toISOString(), req.user.userId]
+        );
+      } catch (dbErr) {
+        console.error('[eMessage] failed to update onboarding progress', dbErr);
+      }
+    }
+
     res.status(200).json({ success: true, mfaVerified: true });
   } catch (err: any) {
     console.error('[eMessage] verify-otp error:', err);
