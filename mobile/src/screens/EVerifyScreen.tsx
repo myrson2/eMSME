@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Alert } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +6,6 @@ import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useSpringEntrance, useBreathingPulse } from '../lib/animations';
 import { colors, text, spacing, radius, shadows, fonts } from '../lib/theme';
-import PressableButton from '../components/ui/PressableButton';
 import FlagAccent from '../components/ui/FlagAccent';
 
 export default function EVerifyScreen() {
@@ -14,12 +13,22 @@ export default function EVerifyScreen() {
   const [loading, setLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  const hasStarted = useRef(false);
 
   const headerEntrance = useSpringEntrance({ delay: 0, distance: 16 });
   const cardEntrance = useSpringEntrance({ delay: 150, distance: 20 });
-  const ctaEntrance = useSpringEntrance({ delay: 300, distance: 12 });
 
   const pulseStyle = useBreathingPulse({ minOpacity: 0.2, maxOpacity: 1, duration: 1500 });
+
+  useEffect(() => {
+    if (!hasStarted.current) {
+      hasStarted.current = true;
+      // Start the automatic verification after a short delay for entrance animations
+      setTimeout(() => {
+        handleVerify();
+      }, 1000);
+    }
+  }, []);
 
   const handleVerify = async () => {
     try {
@@ -135,17 +144,6 @@ export default function EVerifyScreen() {
             {syncStatus}
           </Text>
         )}
-      </Animated.View>
-
-      <Animated.View style={ctaEntrance}>
-        <PressableButton
-          onPress={handleVerify}
-          label="Verify with eVerify"
-          icon="shield-checkmark-outline"
-          loading={loading}
-          variant="primary"
-          size="lg"
-        />
       </Animated.View>
     </View>
   );

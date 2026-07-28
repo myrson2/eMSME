@@ -3,12 +3,14 @@ import { View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'r
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useSpringEntrance } from '../lib/animations';
 import { colors, text, spacing, fonts } from '../lib/theme';
 import PressableButton from '../components/ui/PressableButton';
 import OnboardingField from '../components/ui/OnboardingField';
+import OnboardingPicker from '../components/ui/OnboardingPicker';
 
 // Step indicator
 function StepDot({ active, done }: { active: boolean; done: boolean }) {
@@ -27,6 +29,7 @@ function StepDot({ active, done }: { active: boolean; done: boolean }) {
 
 export default function BusinessProfileScreen() {
   const { checkSession } = useAuth();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('');
@@ -69,12 +72,27 @@ export default function BusinessProfileScreen() {
     }
   };
 
+  const BUSINESS_TYPES = ['Sole Proprietorship', 'Corporation', 'Partnership', 'Cooperative'];
+  const INDUSTRIES = ['Retail', 'Wholesale Trade', 'Manufacturing', 'Food & Beverage', 'Services', 'Agriculture', 'Technology', 'Other'];
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
       style={{ flex: 1, backgroundColor: colors.surface }}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.xl, paddingTop: Math.max(insets.top + 16, 64), paddingBottom: 64 }}>
+        
+        {/* Back Button */}
+        <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }, headerEntrance]}>
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={colors.ink}
+            onPress={() => navigation.goBack()}
+            style={{ padding: 4, marginLeft: -4 }}
+          />
+        </Animated.View>
+
         {/* Step indicator */}
         <View style={{ flexDirection: 'row', gap: 6, marginBottom: 28 }}>
           <StepDot active={false} done />
@@ -95,12 +113,24 @@ export default function BusinessProfileScreen() {
 
         {/* Form */}
         <Animated.View style={formEntrance}>
-          <OnboardingField label="Business name" value={businessName} onChangeText={setBusinessName} placeholder="Dela Cruz General Trading" />
-          <OnboardingField label="Business type" value={businessType} onChangeText={setBusinessType} placeholder="Sole Proprietorship / Corporation" />
+          <OnboardingField label="Business name" value={businessName} onChangeText={setBusinessName} placeholder="e.g. Dela Cruz General Trading" />
+          <OnboardingPicker 
+            label="Business type" 
+            value={businessType} 
+            onValueChange={setBusinessType} 
+            placeholder="Select business type" 
+            options={BUSINESS_TYPES} 
+          />
           <OnboardingField label="DTI / SEC registration no." value={registrationNumber} onChangeText={setRegistrationNumber} placeholder="DTI-REG-XXXXXX" mono />
           <OnboardingField label="BIR TIN number" value={birTin} onChangeText={setBirTin} placeholder="XXX-XXX-XXX-000" mono />
           <OnboardingField label="LGU mayor permit no." value={lguPermitNumber} onChangeText={setLguPermitNumber} placeholder="MAYOR-PERMIT-2026-XX" mono />
-          <OnboardingField label="Industry category" value={industry} onChangeText={setIndustry} placeholder="e.g. Retail, Food, Services" />
+          <OnboardingPicker 
+            label="Industry category" 
+            value={industry} 
+            onValueChange={setIndustry} 
+            placeholder="Select industry" 
+            options={INDUSTRIES} 
+          />
         </Animated.View>
 
         {/* CTA */}

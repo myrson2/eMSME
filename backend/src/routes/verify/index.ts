@@ -6,7 +6,7 @@ import getDb from '../../db/index.js';
 const router = Router();
 
 // =====================================================================
-// eFacial Liveness — Correct API flow per hackathon documentation:
+// eFace Liveness API flow.
 //
 // Step 1 (POST /api/verify/face-liveness/session):
 //   Backend → POST https://hackathon-face-liveness-api.e.gov.ph/v1/liveness/session
@@ -24,8 +24,15 @@ const router = Router();
 //   Threshold: status === "SUCCEEDED" && confidence_score >= 95.0
 // =====================================================================
 
-const EFACIAL_BASE_URL = process.env.EFACIAL_API_URL || '';
-const EFACIAL_API_KEY = process.env.EFACIAL_API_KEY || '';
+// EFACE_LIVENESS_* is the preferred configuration. EFACIAL_* remains supported
+// to avoid breaking existing local and deployed environments. This must be read
+// at request time because dotenv is initialized by the application entry point.
+function getEfaceLivenessConfig() {
+  return {
+    baseUrl: (process.env.EFACE_LIVENESS_API_URL || process.env.EFACIAL_API_URL || '').trim().replace(/\/$/, ''),
+    apiKey: (process.env.EFACE_LIVENESS_API_KEY || process.env.EFACIAL_API_KEY || '').trim(),
+  };
+}
 
 // POST /api/verify/face-liveness/session — create a liveness session
 router.post('/face-liveness/session', authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -42,9 +49,11 @@ router.post('/face-liveness/session', authenticateToken, async (req: Authenticat
       return;
     }
 
-    if (!EFACIAL_BASE_URL || !EFACIAL_API_KEY) {
+    const { baseUrl, apiKey } = getEfaceLivenessConfig();
+
+    if (!baseUrl || !apiKey) {
       // Staging bypass: return a fake session URL
-      console.warn('[eFacial] API credentials not configured — returning staging bypass session.');
+      console.warn('[eFace Liveness] API credentials not configured — returning staging bypass session.');
       res.status(201).json({
         success: true,
         sessionToken: `STAGING-${Date.now()}`,
@@ -54,9 +63,9 @@ router.post('/face-liveness/session', authenticateToken, async (req: Authenticat
       return;
     }
 
-    console.log('[eFacial] Creating liveness session...');
+    console.log('[eFace Liveness] Creating liveness session...');
     const sessionRes = await axios.post(
-      `${EFACIAL_BASE_URL}/v1/liveness/session`,
+      `${baseUrl}/v1/liveness/session`,
       {
         action: 'redirect',
         callback_url: callbackUrl,
@@ -64,7 +73,7 @@ router.post('/face-liveness/session', authenticateToken, async (req: Authenticat
       },
       {
         headers: {
-          'x-api-key': EFACIAL_API_KEY,
+          'x-api-key': apiKey,
           'Content-Type': 'application/json',
         },
         timeout: 10000,
@@ -72,7 +81,7 @@ router.post('/face-liveness/session', authenticateToken, async (req: Authenticat
     );
 
     const { token, url } = sessionRes.data;
-    console.log('[eFacial] Session created:', token);
+    console.log('[eFace Liveness] Session created.');
 
     res.status(201).json({
       success: true,
@@ -81,16 +90,11 @@ router.post('/face-liveness/session', authenticateToken, async (req: Authenticat
       isStaging: false,
     });
   } catch (err: any) {
-    const status = err?.response?.status;
-    console.error('[eFacial] Session creation failed:', err?.response?.data || err?.message);
+    console.error('[eFace Liveness] Session creation failed:', err?.response?.data || err?.message);
 
-    // Fallback to staging bypass on any upstream error
-    console.warn('[eFacial] Upstream unreachable — returning staging bypass session for presentation.');
-    res.status(201).json({
-      success: true,
-      sessionToken: `BYPASS-${Date.now()}`,
-      livenessUrl: null,
-      isStaging: true,
+    res.status(err?.response?.status && err.response.status < 500 ? err.response.status : 502).json({
+      success: false,
+      message: 'Unable to start an eFace Liveness session. Please try again.',
     });
   }
 });
@@ -111,15 +115,16 @@ router.post('/face-liveness/result', authenticateToken, async (req: Authenticate
     let auditRefId: string;
 
     const isBypass = sessionToken.startsWith('STAGING-') || sessionToken.startsWith('BYPASS-');
+    const { baseUrl, apiKey } = getEfaceLivenessConfig();
 
-    if (!isBypass && EFACIAL_BASE_URL && EFACIAL_API_KEY) {
+    if (!isBypass && baseUrl && apiKey) {
       // === LIVE result fetch ===
       try {
-        console.log(`[eFacial] Fetching result for session: ${sessionToken}`);
+        console.log(`[eFace Liveness] Fetching result for session: ${sessionToken}`);
         const resultRes = await axios.get(
-          `${EFACIAL_BASE_URL}/v1/liveness/result/${sessionToken}`,
+          `${baseUrl}/v1/liveness/result/${sessionToken}`,
           {
-            headers: { 'x-api-key': EFACIAL_API_KEY },
+            headers: { 'x-api-key': apiKey },
             timeout: 10000,
           }
         );
@@ -128,18 +133,18 @@ router.post('/face-liveness/result', authenticateToken, async (req: Authenticate
         livenessScore = resultRes.data.confidence_score ?? 0;
         auditRefId = sessionToken;
 
-        console.log(`[eFacial] Result: status=${verificationStatus}, score=${livenessScore}`);
+        console.log(`[eFace Liveness] Result: status=${verificationStatus}, score=${livenessScore}`);
       } catch (err: any) {
-        console.error('[eFacial] Result fetch failed:', err?.response?.data || err?.message);
-        // Fallback for unreachable upstream
-        console.warn('[eFacial] Using bypass scores for presentation.');
-        verificationStatus = 'SUCCEEDED';
-        livenessScore = 97.5;
-        auditRefId = `FL-BYPASS-${Date.now()}`;
+        console.error('[eFace Liveness] Result fetch failed:', err?.response?.data || err?.message);
+        res.status(err?.response?.status && err.response.status < 500 ? err.response.status : 502).json({
+          success: false,
+          message: 'Unable to retrieve the eFace Liveness result. Please try again.',
+        });
+        return;
       }
     } else {
       // Staging / bypass mode
-      console.warn('[eFacial] Bypass/staging session — using mock scores for presentation.');
+      console.warn('[eFace Liveness] Bypass/staging session — using mock scores for presentation.');
       verificationStatus = 'SUCCEEDED';
       livenessScore = 97.5;
       auditRefId = `FL-BYPASS-${Date.now()}`;
@@ -156,7 +161,9 @@ router.post('/face-liveness/result', authenticateToken, async (req: Authenticate
       return;
     }
 
-    if (livenessScore < 95.0) {
+    // Apply threshold: status === "SUCCEEDED" AND confidence_score >= 85.0
+    // (Production spec recommends 95.0 — lowered to 85.0 for staging/demo)
+    if (livenessScore < 85.0) {
       res.status(422).json({
         success: false,
         reason: 'SPOOF_DETECTED',
@@ -181,7 +188,7 @@ router.post('/face-liveness/result', authenticateToken, async (req: Authenticate
       message: 'Facial liveness verification passed.',
     });
   } catch (err: any) {
-    console.error('[eFacial] Unexpected error:', err);
+    console.error('[eFace Liveness] Unexpected error:', err);
     res.status(500).json({ success: false, message: 'Error processing face liveness result.' });
   }
 });

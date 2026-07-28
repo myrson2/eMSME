@@ -20,9 +20,15 @@ const router = Router();
 // Base URL: https://hackathon-sso.e.gov.ph
 // =====================================================================
 
-const EGOV_BASE_URL = process.env.EGOV_BASE_URL || 'https://hackathon-sso.e.gov.ph';
-const PARTNER_CODE = process.env.EGOV_PARTNER_CODE || '';
-const PARTNER_SECRET = process.env.EGOV_PARTNER_SECRET || '';
+// Read env vars at request time (not module load time) because
+// this module is imported BEFORE dotenv.config() runs in index.ts.
+function getEgovConfig() {
+  return {
+    baseUrl: process.env.EGOV_BASE_URL || 'https://hackathon-sso.e.gov.ph',
+    partnerCode: process.env.EGOV_PARTNER_CODE || '',
+    partnerSecret: process.env.EGOV_PARTNER_SECRET || '',
+  };
+}
 
 export interface ExchangeRequestBody {
   exchange_code?: string;
@@ -69,22 +75,31 @@ router.post(
 
       let userProfile: EGovUserProfile;
       const isBypassCode = exchange_code.startsWith('hackathon_bypass_code_');
+      const isDirectApiAuth = exchange_code === 'egov_api_auth';
 
       if (!isBypassCode) {
         // === LIVE eGovPH SSO flow ===
+        // For 'egov_api_auth': the mobile app is requesting direct API auth
+        // (no browser redirect — staging host has no login page).
+        // We use the partner credentials to authenticate via the API.
         try {
-          // Step 1: Exchange code for access token
-          console.log(`[eGov SSO] Exchanging code at ${EGOV_BASE_URL}/api/token`);
+          const { baseUrl, partnerCode, partnerSecret } = getEgovConfig();
+
+          console.log(`[eGov SSO] Exchanging ${isDirectApiAuth ? 'partner credentials (direct API auth)' : `code "${exchange_code.slice(0, 10)}..."`} at ${baseUrl}/api/token`);
+          // The staging API is Laravel-based and expects form-urlencoded data
+          const tokenParams = new URLSearchParams();
+          tokenParams.append('scope', 'SSO_AUTHENTICATION');
+          tokenParams.append('partner_code', partnerCode);
+          tokenParams.append('partner_secret', partnerSecret);
+          if (!isDirectApiAuth) {
+            tokenParams.append('exchange_code', exchange_code);
+          }
+
           const tokenRes = await axios.post<EGovTokenResponse>(
-            `${EGOV_BASE_URL}/api/token`,
+            `${baseUrl}/api/token`,
+            tokenParams.toString(),
             {
-              exchange_code,
-              scope: 'SSO_AUTHENTICATION',
-              partner_code: PARTNER_CODE,
-              partner_secret: PARTNER_SECRET,
-            },
-            {
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               timeout: 10000,
             }
           );
@@ -98,7 +113,7 @@ router.post(
 
           // Step 2: Get user profile with Bearer token
           const profileRes = await axios.post<{ data: EGovUserProfile }>(
-            `${EGOV_BASE_URL}/api/partner/sso_authentication`,
+            `${baseUrl}/api/partner/sso_authentication`,
             null,
             {
               headers: { Authorization: `Bearer ${access_token}` },
@@ -113,7 +128,7 @@ router.post(
           const upstreamMsg = upstreamErr?.response?.data?.message || upstreamErr?.message;
           console.error('[eGov SSO] Upstream error:', status, upstreamMsg);
 
-          if (status === 422) {
+          if (!isDirectApiAuth && status === 422) {
             res.status(422).json({
               success: false,
               message: 'Exchange code is invalid or has already been used.',
@@ -129,7 +144,7 @@ router.post(
             return;
           }
 
-          // Unresolvable upstream (server down) — use demo fallback
+          // Unresolvable upstream (server down or staging limitation) — use demo fallback
           console.warn('[eGov SSO] Upstream unreachable. Using presentation fallback profile.');
           userProfile = {
             uniqid: `egov-demo-${Date.now()}`,

@@ -7,11 +7,32 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "emsme",
+    "android": {
+      "package": "ph.gov.emsme.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "ph.gov.emsme.app"
+    },
     "plugins": [
       "expo-secure-store",
       "expo-asset",
       "expo-web-browser",
-      ["expo-camera", { "cameraPermission": "Allow eMSME to access your camera for facial liveness verification." }]
-    ]
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow eMSME to access your camera for facial liveness verification."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8cba27c1-6d71-453b-a41d-c5e6d8ceca96"
+      }
+    },
+    "owner": "crym-o"
   }
 }

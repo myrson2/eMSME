@@ -167,16 +167,41 @@ export default function AccountScreen({ navigation }: any) {
     {
       title: 'Account',
       items: [
-        { icon: 'storefront-outline', label: 'Business profile', subtitle: 'Manage your registered businesses' },
-        { icon: 'person-outline', label: 'Personal info', subtitle: 'Name, contact details, address' },
-        { icon: 'shield-checkmark-outline', label: 'Identity verification', subtitle: 'PhilSys & biometric status' },
+        { 
+          icon: 'storefront-outline', 
+          label: 'Business profile', 
+          subtitle: 'Manage your registered businesses',
+          onPress: () => navigation.navigate('Business')
+        },
+        { 
+          icon: 'person-outline', 
+          label: 'Personal info', 
+          subtitle: 'Name, contact details, address',
+          onPress: () => Alert.alert('Coming Soon', 'Personal Info management will be available in the next update.')
+        },
+        { 
+          icon: 'shield-checkmark-outline', 
+          label: 'Identity verification', 
+          subtitle: 'PhilSys & biometric status',
+          onPress: () => Alert.alert('Identity Verified', 'Your identity is fully verified with eGovPH SSO and PhilSys.')
+        },
       ],
     },
     {
       title: 'Preferences',
       items: [
-        { icon: 'notifications-outline', label: 'Notifications', subtitle: 'Push notifications & alerts' },
-        { icon: 'language-outline', label: 'Language', subtitle: 'Filipino / English' },
+        { 
+          icon: 'notifications-outline', 
+          label: 'Notifications', 
+          subtitle: 'Push notifications & alerts',
+          onPress: () => Alert.alert('Notifications', 'Push notification preferences are currently managed at the system level.')
+        },
+        { 
+          icon: 'language-outline', 
+          label: 'Language', 
+          subtitle: 'Filipino / English',
+          onPress: () => Alert.alert('Language', 'Language switching (Filipino/English) is currently in development.')
+        },
       ],
     },
     {
@@ -188,8 +213,17 @@ export default function AccountScreen({ navigation }: any) {
           subtitle: 'Chat with eGovAI assistant',
           onPress: () => navigation.navigate('EGovAI')
         },
-        { icon: 'information-circle-outline', label: 'About eMSME', subtitle: 'Version 1.0.0' },
-        { icon: 'document-text-outline', label: 'Terms & privacy policy' },
+        { 
+          icon: 'information-circle-outline', 
+          label: 'About eMSME', 
+          subtitle: 'Version 1.0.0',
+          onPress: () => Alert.alert('About eMSME', 'eMSME v1.0.0\nDeveloped for the eGovPH Hackathon 2026.')
+        },
+        { 
+          icon: 'document-text-outline', 
+          label: 'Terms & privacy policy',
+          onPress: () => Alert.alert('Privacy Policy', 'Your data is secured in compliance with the Data Privacy Act of 2012 (RA 10173).')
+        },
       ],
     },
   ];

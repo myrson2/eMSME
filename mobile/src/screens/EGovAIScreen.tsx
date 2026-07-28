@@ -130,6 +130,28 @@ export default function EGovAIScreen({ navigation }: any) {
     }
   };
 
+  const handleAction = (actionCode: string, label: string) => {
+    switch (actionCode) {
+      case 'VIEW_LOANS':
+        navigation.navigate('MainTabs', { screen: 'Aid' });
+        break;
+      case 'UPLOAD_DOCS':
+      case 'CHECK_REGISTRATION':
+        navigation.navigate('MainTabs', { screen: 'Business' });
+        break;
+      case 'GO_DASHBOARD':
+      case 'PAY_LOAN':
+        navigation.navigate('MainTabs', { screen: 'Home' });
+        break;
+      case 'RETRY':
+        sendMessage('Please try answering my question again.');
+        break;
+      default:
+        sendMessage(label);
+        break;
+    }
+  };
+
   const renderMessage = ({ item, index }: { item: Message, index: number }) => {
     const isUser = item.role === 'user';
     const isNextSameRole = index < messages.length - 1 && messages[index + 1].role === item.role;
@@ -202,7 +224,12 @@ export default function EGovAIScreen({ navigation }: any) {
         {item.actions && item.actions.length > 0 && index === messages.length - 1 && (
           <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', marginLeft: -4 }}>
             {item.actions.map((act, idx) => (
-              <PressableAction key={idx} label={act.label} onPress={() => sendMessage(act.label)} index={idx} />
+              <PressableAction 
+                key={idx} 
+                label={act.label} 
+                onPress={() => handleAction(act.action, act.label)} 
+                index={idx} 
+              />
             ))}
           </View>
         )}

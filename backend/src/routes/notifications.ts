@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
-import axios from 'axios';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { sendEMessageSms } from '../services/emessage.js';
 
 const router = Router();
 
@@ -24,19 +24,8 @@ router.post('/smart-alert', authenticateToken, async (req: AuthenticatedRequest,
     if (emessageUrl && emessageToken) {
       // === LIVE eMessage API call ===
       try {
-        const smsRes = await axios.post(
-          `${emessageUrl}/messaging/v1/sms/push`,
-          { number: mobileNumber, message, token: emessageToken },
-          {
-            headers: {
-              'X-EMESSAGE-Auth': emessageToken,
-              'Authorization': `Bearer ${emessageToken}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 10000,
-          }
-        );
-        const messageId = smsRes.data?.data?.message_id ?? smsRes.data?.message_id ?? `MSG-${Date.now()}`;
+        const result = await sendEMessageSms(mobileNumber, message);
+        const messageId = result.messageId ?? `MSG-${Date.now()}`;
         console.log(`[eMessage] Smart alert SMS dispatched to ${mobileNumber} — messageId: ${messageId}`);
         
         res.status(200).json({ success: true, message: 'Smart alert SMS sent.', messageId });

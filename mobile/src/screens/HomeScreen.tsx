@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import { useStaggeredEntry, useSpringEntrance, usePressScale } from '../lib/animations';
@@ -12,7 +12,9 @@ import FlagAccent from '../components/ui/FlagAccent';
 import StatusDot from '../components/ui/StatusDot';
 import { SkeletonMetricCard, SkeletonBusinessCard } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
+import EGovPayModal from '../components/ui/EGovPayModal';
 import * as Haptics from 'expo-haptics';
+import { Alert } from 'react-native';
 
 interface LoanSummary {
   totalOutstanding: number;
@@ -171,14 +173,16 @@ function BusinessCard({ biz, index, onPress }: BusinessCardProps) {
           </View>
         </View>
 
-        {/* Match count */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <StatusDot variant="active" size={6} animate />
-          <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.primary }}>
-            {biz.matchCount} new matches available
-          </Text>
-          <Ionicons name="chevron-forward" size={12} color={colors.primary} style={{ marginLeft: 'auto' }} />
-        </View>
+        {/* Match count — only shown when matches exist */}
+        {(biz.matchCount || 0) > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <StatusDot variant="active" size={6} animate />
+            <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.primary }}>
+              {biz.matchCount} new {biz.matchCount === 1 ? 'match' : 'matches'} available
+            </Text>
+            <Ionicons name="chevron-forward" size={12} color={colors.primary} style={{ marginLeft: 'auto' }} />
+          </View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -199,6 +203,13 @@ export default function HomeScreen() {
     totalDisbursed: 0,
   });
   const [businesses, setBusinesses] = useState<BusinessInfo[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+
+  // EGovPay Modal State
+  const [payModalVisible, setPayModalVisible] = useState(false);
+  const [payModalMode, setPayModalMode] = useState<'PAYMENT' | 'CASHOUT'>('PAYMENT');
+  const [payModalAmount, setPayModalAmount] = useState(0);
+  const [activeLoanId, setActiveLoanId] = useState<string | null>(null);
 
   const headerEntrance = useSpringEntrance({ delay: 0, distance: 0 });
   const summaryEntrance = useSpringEntrance({ delay: 160, distance: 20 });
@@ -213,15 +224,16 @@ export default function HomeScreen() {
     try {
       const loansRes = await client.get('/loans/my');
       if (loansRes.data.success && loansRes.data.loans?.length > 0) {
-        const loans = loansRes.data.loans;
-        const active = loans.filter((l: any) =>
-          ['REPAYMENT_ACTIVE', 'APPROVED', 'DISBURSEMENT_PENDING'].includes(l.status)
+        const fetchedLoans = loansRes.data.loans;
+        setLoans(fetchedLoans);
+        const active = fetchedLoans.filter((l: any) =>
+          ['REPAYMENT_ACTIVE'].includes(l.status)
         );
         const totalOutstanding = active.reduce(
           (sum: number, l: any) => sum + (l.approved_amount || l.requested_amount || 0),
           0
         );
-        const totalDisbursed = loans
+        const totalDisbursed = fetchedLoans
           .filter((l: any) => l.disbursed_at)
           .reduce((sum: number, l: any) => sum + (l.approved_amount || 0), 0);
 
@@ -252,15 +264,56 @@ export default function HomeScreen() {
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [fetchDashboardData])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchDashboardData();
     setRefreshing(false);
   }, [fetchDashboardData]);
+
+  const handleCashOut = () => {
+    const pendingLoan = loans.find(l => l.status === 'DISBURSEMENT_PENDING');
+    if (!pendingLoan) {
+      Alert.alert('No funds available', 'You do not have any pending loan matches ready for cash out. Make sure you accept a match first!');
+      return;
+    }
+    setActiveLoanId(pendingLoan.id);
+    setPayModalAmount(pendingLoan.approved_amount || pendingLoan.requested_amount);
+    setPayModalMode('CASHOUT');
+    setPayModalVisible(true);
+  };
+
+  const handlePayLoan = () => {
+    const activeLoan = loans.find(l => l.status === 'REPAYMENT_ACTIVE');
+    if (!activeLoan) {
+      Alert.alert('No active loans', 'You do not have any active loans requiring repayment at this time.');
+      return;
+    }
+    setActiveLoanId(activeLoan.id);
+    setPayModalAmount(activeLoan.next_installment_amount || 0);
+    setPayModalMode('PAYMENT');
+    setPayModalVisible(true);
+  };
+
+  const onConfirmPayModal = async () => {
+    if (!activeLoanId) return;
+    
+    if (payModalMode === 'CASHOUT') {
+      const res = await client.post(`/loans/${activeLoanId}/disburse`);
+      if (!res.data.success) throw new Error();
+    } else {
+      const res = await client.post(`/loans/${activeLoanId}/repay`);
+      if (!res.data.success) throw new Error();
+    }
+    
+    // Refresh dashboard to reflect new totals after mock webhook
+    setTimeout(fetchDashboardData, 3500);
+  };
 
   const quickActions = [
     {
@@ -398,6 +451,39 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Transaction Split-Pill Actions */}
+            <View 
+              style={{ 
+                flexDirection: 'row', 
+                marginTop: 24, 
+                backgroundColor: colors.primaryMuted, 
+                borderRadius: 100, 
+                borderWidth: 1,
+                borderColor: `${colors.primary}15`,
+                overflow: 'hidden'
+              }}
+            >
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                onPress={handleCashOut}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="cash-outline" size={18} color={colors.primary} />
+                <Text style={{ fontFamily: fonts.semiBold, fontSize: 14, color: colors.primary }}>Cash Out</Text>
+              </TouchableOpacity>
+              
+              <View style={{ width: 1, backgroundColor: `${colors.primary}20`, marginVertical: 8 }} />
+
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                onPress={handlePayLoan}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="wallet-outline" size={18} color={colors.primary} />
+                <Text style={{ fontFamily: fonts.semiBold, fontSize: 14, color: colors.primary }}>Pay Loan</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </Animated.View>
@@ -422,60 +508,63 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
-      {/* Smart Alert */}
-      <Animated.View style={[{ paddingHorizontal: spacing.screen, marginTop: 28 }, alertEntrance]}>
-        <Text style={[text.h4, { color: colors.ink, marginBottom: 14 }]}>
-          Smart alerts
-        </Text>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={{
-            backgroundColor: colors.amberMuted,
-            borderRadius: radius.lg,
-            padding: 18,
-            borderWidth: 1,
-            borderColor: `${colors.amber}40`,
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            gap: 14,
-            ...shadows.amber,
-          }}
-        >
-          <View
+      {/* Smart Alert — only shown when approved matches exist */}
+      {businesses.some(b => (b.matchCount || 0) > 0) && (
+        <Animated.View style={[{ paddingHorizontal: spacing.screen, marginTop: 28 }, alertEntrance]}>
+          <Text style={[text.h4, { color: colors.ink, marginBottom: 14 }]}>
+            Smart alerts
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Aid')}
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: 13,
-              backgroundColor: colors.surfaceRaised,
-              justifyContent: 'center',
-              alignItems: 'center',
+              backgroundColor: colors.amberMuted,
+              borderRadius: radius.lg,
+              padding: 18,
+              borderWidth: 1,
+              borderColor: `${colors.amber}40`,
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 14,
+              ...shadows.amber,
             }}
           >
-            <Ionicons name="flash-outline" size={20} color={colors.amber} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-              <Text style={[text.label, { color: colors.ink }]}>
-                New grant available
-              </Text>
-              <View style={{ backgroundColor: colors.amber, borderRadius: radius.xs, paddingHorizontal: 6, paddingVertical: 2 }}>
-                <Text style={{ fontFamily: fonts.medium, fontSize: 9, color: colors.white, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Match
+            <View
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 13,
+                backgroundColor: colors.surfaceRaised,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Ionicons name="flash-outline" size={20} color={colors.amber} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                <Text style={[text.label, { color: colors.ink }]}>
+                  New loan match available
                 </Text>
+                <View style={{ backgroundColor: colors.amber, borderRadius: radius.xs, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ fontFamily: fonts.medium, fontSize: 9, color: colors.white, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Match
+                  </Text>
+                </View>
+              </View>
+              <Text style={[text.body, { color: colors.body, lineHeight: 20 }]}>
+                Your government loan application has been approved. View your matched lenders now.
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 }}>
+                <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.amber }}>
+                  View details
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color={colors.amber} />
               </View>
             </View>
-            <Text style={[text.body, { color: colors.body, lineHeight: 20 }]}>
-              Your <Text style={{ fontFamily: fonts.medium, color: colors.ink }}>Retail & Wholesale</Text> business qualifies for the DTI Livelihood Seeding Program.
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 }}>
-              <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.amber }}>
-                View details
-              </Text>
-              <Ionicons name="arrow-forward" size={13} color={colors.amber} />
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
       {/* Business List */}
       <Animated.View style={[{ paddingHorizontal: spacing.screen, marginTop: 28, paddingBottom: 32 }, bizEntrance]}>
@@ -518,6 +607,14 @@ export default function HomeScreen() {
           ))
         )}
       </Animated.View>
+
+      <EGovPayModal
+        visible={payModalVisible}
+        mode={payModalMode}
+        amount={payModalAmount}
+        onClose={() => setPayModalVisible(false)}
+        onConfirm={onConfirmPayModal}
+      />
     </ScrollView>
   );
 }

@@ -84,18 +84,22 @@ function BizCard({ biz, index, onPress }: { biz: any; index: number; onPress: ()
           </View>
         </View>
 
-        {/* Match count */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <StatusDot variant="active" size={6} animate />
-          <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.primary }}>
-            {biz.matchCount || 0} new matches available
-          </Text>
-          <Ionicons name="chevron-forward" size={13} color={colors.primary} style={{ marginLeft: 'auto' }} />
-        </View>
+        {/* Match count — only shown when matches exist */}
+        {(biz.matchCount || 0) > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <StatusDot variant="active" size={6} animate />
+            <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.primary }}>
+              {biz.matchCount} new {biz.matchCount === 1 ? 'match' : 'matches'} available
+            </Text>
+            <Ionicons name="chevron-forward" size={13} color={colors.primary} style={{ marginLeft: 'auto' }} />
+          </View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
 }
+
+import SmartAlert from '../components/ui/SmartAlert';
 
 // ---------------------------------------------------------------------------
 // Main screen
@@ -105,13 +109,29 @@ export default function BusinessListScreen() {
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const matchCountRef = React.useRef(0);
+  const isInitialLoad = React.useRef(true);
+  const [alertVisible, setAlertVisible] = useState(false);
 
   const headerEntrance = useSpringEntrance({ delay: 0, distance: 12 });
 
   const fetchBusinesses = useCallback(async () => {
     try {
       const res = await client.get('/business-profiles/my');
-      if (res.data.success) setBusinesses(res.data.businesses);
+      if (res.data.success) {
+        const newData = res.data.businesses;
+        setBusinesses(newData);
+        
+        const totalMatches = newData.reduce((acc: number, b: any) => acc + (b.matchCount || 0), 0);
+        
+        // If it's not the initial load and matches increased, trigger the alert
+        if (!isInitialLoad.current && totalMatches > matchCountRef.current) {
+          setAlertVisible(true);
+        }
+        
+        matchCountRef.current = totalMatches;
+        isInitialLoad.current = false;
+      }
     } catch (err) {
       console.error('Failed to fetch businesses:', err);
     } finally {
@@ -119,7 +139,16 @@ export default function BusinessListScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchBusinesses(); }, [fetchBusinesses]);
+  useEffect(() => { 
+    fetchBusinesses();
+    
+    // Poll every 3 seconds to check for new loan matches
+    const intervalId = setInterval(() => {
+      fetchBusinesses();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchBusinesses]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -129,6 +158,13 @@ export default function BusinessListScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <SmartAlert 
+        visible={alertVisible} 
+        title="Match Found!" 
+        message="You have new government loan offers from LANDBANK/DBP." 
+        onClose={() => setAlertVisible(false)} 
+        autoHideMs={6000}
+      />
       {/* Header */}
       <Animated.View
         style={[

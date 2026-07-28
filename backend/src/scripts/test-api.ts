@@ -30,10 +30,10 @@ async function runApiTestSuite() {
     const status1 = await axios.get(`${BASE_URL}/onboarding/status`, { headers });
     console.log('  ✅ Onboarding Status:', status1.data.currentStep, `(${status1.data.percentComplete}%)`);
 
-    // 4. Test eFacial Liveness
-    console.log('\n4️⃣ Testing eFacial Liveness Check (POST /api/verify/face-liveness)...');
+    // 4. Test eFace Liveness
+    console.log('\n4️⃣ Testing eFace Liveness Check (POST /api/verify/face-liveness)...');
     const facialRes = await axios.post(`${BASE_URL}/verify/face-liveness`, { faceBase64: 'mock_frame_data' }, { headers });
-    console.log('  ✅ eFacial Check Passed:', facialRes.data.message);
+    console.log('  ✅ eFace Liveness Check Passed:', facialRes.data.message);
 
     // 5. Test eVerify PhilSys Match
     console.log('\n5️⃣ Testing eVerify PhilSys Verification (POST /api/verify/philsys)...');

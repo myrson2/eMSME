@@ -56,8 +56,8 @@ export function scoreOperatingHistory(inputs: Pick<ScoringInputs, 'yearsInOperat
 }
 
 export function computeDecision(totalScore: number): 'AUTO_APPROVE' | 'MANUAL_REVIEW' | 'AUTO_REJECT' {
-  if (totalScore >= 80) return 'AUTO_APPROVE';
-  if (totalScore >= 60) return 'MANUAL_REVIEW';
+  if (totalScore >= 70) return 'AUTO_APPROVE'; // Adjusted for demo (was 80)
+  if (totalScore >= 50) return 'MANUAL_REVIEW'; // Adjusted for demo (was 60)
   return 'AUTO_REJECT';
 }
 

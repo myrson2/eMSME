@@ -29,5 +29,9 @@
     "@types/uuid": "^10.0.0",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "sqlite3@6.0.1": true
   }
 }

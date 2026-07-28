@@ -28,6 +28,7 @@ interface AuthContextData {
   checkSession: () => Promise<void>;
   login: (code: string) => Promise<void>;
   logout: () => Promise<void>;
+  restartToPhilSys: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -60,11 +61,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setOnboardingStep(null);
       }
     } catch (error) {
-      console.log('Session check failed:', error);
+      console.log('No active session.');
       setIsAuthenticated(false);
       setUser(null);
       setOnboardingStep(null);
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const restartToPhilSys = async () => {
+    setIsLoading(true);
+    try {
+      await client.post('/onboarding/restart');
+      await checkSession();
+    } catch (e) {
+      console.error('Failed to restart to PhilSys', e);
       setIsLoading(false);
     }
   };
@@ -109,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, onboardingStep, checkSession, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, onboardingStep, checkSession, login, logout, restartToPhilSys }}>
       {children}
     </AuthContext.Provider>
   );

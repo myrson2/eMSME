@@ -75,6 +75,7 @@ export default function OnboardingField({
             fontFamily: mono || prefix ? fonts.mono : fonts.sans,
             fontSize: 14,
             color: colors.ink,
+            letterSpacing: 0,
             minHeight: multiline ? 88 : undefined,
             textAlignVertical: multiline ? 'top' : 'center',
           }}

@@ -1,63 +1,35 @@
 import { useCallback, useState } from 'react';
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
 
-// Required for expo-web-browser to complete the auth session on redirect
-WebBrowser.maybeCompleteAuthSession();
-
-const EGOV_SSO_PORTAL = 'https://hackathon-sso.e.gov.ph';
-const PARTNER_CODE = process.env.EXPO_PUBLIC_EGOV_PARTNER_CODE || 'HACKATHON_SSO';
-
+/**
+ * useEGovAuth — Direct API-based SSO authentication.
+ *
+ * The eGov hackathon staging host (hackathon-sso.e.gov.ph) is a headless API
+ * service with NO browser login page. Opening a WebBrowser to it just shows
+ * raw JSON. Instead we call the backend directly, which performs the
+ * server-to-server token exchange and profile fetch.
+ *
+ * In production with a real eGov OAuth portal, this hook would be updated to
+ * use expo-auth-session with a proper browser redirect.
+ */
 export function useEGovAuth(onCodeReceived: (code: string) => Promise<void>) {
   const [isLoading, setIsLoading] = useState(false);
 
-  // In Expo Go, redirect_uri is exp://... and is not cleanly intercepted.
-  // In a standalone APK build, use emsme://auth/callback instead and it works natively.
-  const redirectUri = makeRedirectUri({ scheme: 'emsme', path: 'auth/callback' });
-
   const startAuthFlow = useCallback(async () => {
     setIsLoading(true);
-    const ssoUrl = `${EGOV_SSO_PORTAL}?partner_code=${PARTNER_CODE}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-    console.log('[eGovAuth] Opening SSO portal:', ssoUrl);
+    console.log('[eGovAuth] Starting direct API authentication (no browser redirect)...');
 
     try {
-      const result = await WebBrowser.openAuthSessionAsync(ssoUrl, redirectUri, {
-        showInRecents: true,
-      });
-
-      console.log('[eGovAuth] Browser result type:', result.type);
-
-      if (result.type === 'success' && result.url) {
-        // Real exchange code received from eGovPH redirect (works in standalone APK builds)
-        const url = new URL(result.url);
-        const exchangeCode = url.searchParams.get('exchange_code');
-
-        if (exchangeCode) {
-          console.log('[eGovAuth] Real exchange code captured! Exchanging with backend...');
-          await onCodeReceived(exchangeCode);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // In Expo Go, the deep link redirect isn't cleanly captured (exp:// limitation).
-      // Falls through to demo bypass so the flow can continue for testing/presentation.
-      console.warn(
-        '[eGovAuth] Exchange code not captured from redirect (expected in Expo Go dev).',
-        'In a standalone APK build with emsme:// scheme, the real code would be captured.',
-        'Using demo bypass to continue flow...'
-      );
+      // Signal the backend to perform the full server-to-server SSO exchange.
+      // The backend will call /api/token + /api/partner/sso_authentication
+      // and return a session. If the staging API is unreachable it falls back
+      // to a demo profile.
+      await onCodeReceived('egov_api_auth');
     } catch (err) {
-      console.warn('[eGovAuth] WebBrowser error:', err);
-    }
-
-    // Demo bypass: backend will use a mock profile for this prefix
-    setTimeout(async () => {
-      await onCodeReceived('hackathon_bypass_code_' + Date.now());
+      console.error('[eGovAuth] Authentication failed:', err);
+    } finally {
       setIsLoading(false);
-    }, 600);
-  }, [onCodeReceived, redirectUri]);
+    }
+  }, [onCodeReceived]);
 
   return { startAuthFlow, isReady: true, isLoading };
 }

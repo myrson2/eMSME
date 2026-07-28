@@ -56,21 +56,29 @@ export default function LoginScreen() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [authStep, setAuthStep] = useState<string | null>(null);
 
   const brandEntrance = useSpringEntrance({ delay: 80, distance: 20 });
   const cardEntrance = useSpringEntrance({ delay: 280, distance: 32 });
+  const pulseStyle = useBreathingPulse({ minOpacity: 0.4, maxOpacity: 1, duration: 1200 });
 
   const handleCodeReceived = useCallback(async (code: string) => {
     try {
       setLoading(true);
       setErrorMsg(null);
+      setAuthStep('Connecting to eGovPH gateway...');
+      await new Promise((r) => setTimeout(r, 600));
+      setAuthStep('Authenticating with partner credentials...');
       await login(code);
+      setAuthStep('Authentication successful!');
+      await new Promise((r) => setTimeout(r, 400));
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Login failed. Please try again.';
       setErrorMsg(msg);
       Alert.alert('Login Failed', msg);
     } finally {
       setLoading(false);
+      setAuthStep(null);
     }
   }, [login]);
 
@@ -161,47 +169,75 @@ export default function LoginScreen() {
       >
         <FlagAccent height={4} />
 
-        <Text style={[text.h2, { color: colors.ink, marginBottom: 8 }]}>
-          Mag-login
-        </Text>
-        <Text style={[text.body, { color: colors.body, marginBottom: 32, lineHeight: 22 }]}>
-          Gamitin ang iyong eGovPH account para i-access ang MSME financial services.
-        </Text>
-
-        {errorMsg && (
-          <View
-            style={{
-              backgroundColor: colors.signalMuted,
-              borderRadius: radius.sm,
-              padding: 14,
-              marginBottom: 20,
-              flexDirection: 'row',
-              gap: 10,
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: `${colors.signal}30`,
-            }}
-          >
-            <Ionicons name="warning-outline" size={16} color={colors.signal} />
-            <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.signal, flex: 1, lineHeight: 20 }}>
-              {errorMsg}
+        {authStep ? (
+          /* Auth-in-progress overlay */
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <Animated.View style={pulseStyle}>
+              <View style={{
+                width: 64,
+                height: 64,
+                borderRadius: 20,
+                backgroundColor: colors.primaryMuted,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 20,
+              }}>
+                <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
+              </View>
+            </Animated.View>
+            <Text style={[text.h2, { color: colors.ink, marginBottom: 8, textAlign: 'center' }]}>
+              Authenticating
+            </Text>
+            <Text style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.caption, textAlign: 'center' }}>
+              {authStep}
             </Text>
           </View>
+        ) : (
+          /* Normal login card content */
+          <>
+            <Text style={[text.h2, { color: colors.ink, marginBottom: 8 }]}>
+              Mag-login
+            </Text>
+            <Text style={[text.body, { color: colors.body, marginBottom: 32, lineHeight: 22 }]}>
+              Gamitin ang iyong eGovPH account para i-access ang MSME financial services.
+            </Text>
+
+            {errorMsg && (
+              <View
+                style={{
+                  backgroundColor: colors.signalMuted,
+                  borderRadius: radius.sm,
+                  padding: 14,
+                  marginBottom: 20,
+                  flexDirection: 'row',
+                  gap: 10,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: `${colors.signal}30`,
+                }}
+              >
+                <Ionicons name="warning-outline" size={16} color={colors.signal} />
+                <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.signal, flex: 1, lineHeight: 20 }}>
+                  {errorMsg}
+                </Text>
+              </View>
+            )}
+
+            <PressableButton
+              onPress={handleLogin}
+              label="Log in using eGovPH"
+              icon="shield-checkmark"
+              trailingIcon="arrow-forward"
+              loading={loading}
+              variant="primary"
+              size="lg"
+            />
+
+            <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.caption, textAlign: 'center', marginTop: 24 }}>
+              Powered by eGovPH  •  Secured with eVerify
+            </Text>
+          </>
         )}
-
-        <PressableButton
-          onPress={handleLogin}
-          label="Log in using eGovPH"
-          icon="shield-checkmark"
-          trailingIcon="arrow-forward"
-          loading={loading}
-          variant="primary"
-          size="lg"
-        />
-
-        <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.caption, textAlign: 'center', marginTop: 24 }}>
-          Powered by eGovPH  •  Secured with eVerify
-        </Text>
       </Animated.View>
     </LinearGradient>
   );

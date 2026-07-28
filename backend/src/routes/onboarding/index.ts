@@ -155,6 +155,93 @@ router.post(
   }
 );
 
+// POST /api/onboarding/business/select-mock
+// Selects a pre-existing mock business and skips BUSINESS_VERIFY
+router.post(
+  '/business/select-mock',
+  authenticateToken,
+  requireStepComplete('EVERIFY'),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { businessName, businessType, registrationNumber, birTin, industryCategory } = req.body;
+      const userId = req.user?.userId;
+
+      if (!businessName || !registrationNumber || !birTin) {
+        res.status(400).json({ success: false, message: 'Missing mock business details.' });
+        return;
+      }
+
+      const db = await getDb();
+      let businessId;
+      const nowIso = new Date().toISOString();
+
+      // Check if this mock business already exists to prevent cloning
+      const existing = await db.get(
+        'SELECT id FROM business_profiles WHERE owner_id = ? AND registration_number = ?',
+        [userId, registrationNumber]
+      );
+
+      if (existing) {
+        businessId = existing.id;
+      } else {
+        businessId = uuidv4();
+        // Create the business profile as ALREADY VERIFIED
+        await db.run(
+          `INSERT INTO business_profiles
+           (id, owner_id, business_name, trade_name, business_type, registration_number, industry_category, years_in_operation, bir_tin, lgu_permit_number, is_gov_verified, bir_tin_verified, lgu_permit_verified, verified_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, ?)`,
+          [businessId, userId, businessName, null, businessType, registrationNumber, industryCategory, 5, birTin, 'LGU-MOCK', nowIso]
+        );
+      }
+
+      // Advance onboarding directly to FINANCIALS
+      await db.run(
+        `UPDATE onboarding_progress 
+         SET business_profile_id = ?, 
+             business_verify_completed = 1, 
+             current_step = 'FINANCIALS', 
+             updated_at = ? 
+         WHERE user_id = ?`,
+        [businessId, nowIso, userId]
+      );
+
+      res.status(200).json({ success: true, businessId, message: 'Mock business selected and verified.' });
+    } catch (err: any) {
+      console.error('Failed to select mock business:', err);
+      res.status(500).json({ success: false, message: 'Failed to select mock business.' });
+    }
+  }
+);
+
+// POST /api/onboarding/business/undo
+// Reverts the onboarding step from FINANCIALS back to BUSINESS_PROFILE and clears the selected business.
+router.post(
+  '/business/undo',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const db = await getDb();
+      const nowIso = new Date().toISOString();
+
+      await db.run(
+        `UPDATE onboarding_progress 
+         SET business_profile_id = NULL, 
+             business_verify_completed = 0, 
+             current_step = 'BUSINESS_PROFILE', 
+             updated_at = ? 
+         WHERE user_id = ?`,
+        [nowIso, userId]
+      );
+
+      res.status(200).json({ success: true, message: 'Reverted to business selection.' });
+    } catch (err: any) {
+      console.error('Failed to undo business selection:', err);
+      res.status(500).json({ success: false, message: 'Failed to undo business selection.' });
+    }
+  }
+);
+
 // POST /api/onboarding/financials
 router.post(
   '/financials',
@@ -190,6 +277,43 @@ router.post(
       res.status(200).json({ success: true, financialId, message: 'Financial profile saved. User onboarding complete!' });
     } catch (err: any) {
       res.status(500).json({ success: false, message: 'Failed to save financial profile.' });
+    }
+  }
+);
+
+// POST /api/onboarding/restart
+// Resets onboarding progress directly to the EVERIFY step (National ID).
+router.post(
+  '/restart',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const db = await getDb();
+      const nowIso = new Date().toISOString();
+
+      // Clear existing loans for a true clean slate during testing
+      await db.run('DELETE FROM loan_applications WHERE applicant_id = ?', [userId]);
+
+      await db.run(
+        `UPDATE onboarding_progress 
+         SET efacial_completed = 1,
+             sms_otp_verified = 1,
+             everify_completed = 0,
+             business_profile_id = NULL,
+             business_verify_completed = 0,
+             financial_profile_id = NULL,
+             financials_completed = 0,
+             current_step = 'EVERIFY',
+             updated_at = ?
+         WHERE user_id = ?`,
+        [nowIso, userId]
+      );
+
+      res.status(200).json({ success: true, message: 'Onboarding reset to eVerify (National ID).' });
+    } catch (err: any) {
+      console.error('Failed to restart onboarding:', err);
+      res.status(500).json({ success: false, message: 'Failed to restart onboarding.' });
     }
   }
 );

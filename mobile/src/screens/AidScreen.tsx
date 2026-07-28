@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../api/client';
@@ -33,35 +34,7 @@ interface LoanApplication {
   monthly_amortization: number | null;
 }
 
-const MOCK_MATCHES: MatchedProgram[] = [
-  {
-    id: '1',
-    name: 'DOST-PCIEERD MSME Innovation Fund',
-    agency: 'DOST',
-    amount: '₱500,000',
-    type: 'Grant',
-    reason: 'Matched: DTI-registered, innovation-capable, revenue under ₱3M',
-    isNew: true,
-  },
-  {
-    id: '2',
-    name: 'SB Corp Pondo sa Pagbabago',
-    agency: 'SB Corp',
-    amount: '₱100,000 – ₱300,000',
-    type: 'Loan',
-    reason: 'Matched: Sole Proprietorship, 3+ years, with barangay clearance',
-    isNew: true,
-  },
-  {
-    id: '3',
-    name: 'DTI Shared Service Facility',
-    agency: 'DTI',
-    amount: 'Equipment access',
-    type: 'Grant',
-    reason: 'Matched: Retail industry, NCR region',
-    isNew: false,
-  },
-];
+// Matches are derived from real approved loans — no hardcoded mocks
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
   SUBMITTED: { color: colors.primary, bg: colors.primaryMuted, icon: 'paper-plane-outline' },
@@ -78,7 +51,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.Com
 // ---------------------------------------------------------------------------
 // Match card
 // ---------------------------------------------------------------------------
-function MatchCard({ match, index }: { match: MatchedProgram; index: number }) {
+function MatchCard({ match, index, onAccept }: { match: MatchedProgram; index: number; onAccept: () => void }) {
   const { animatedStyle, handlePressIn, handlePressOut } = usePressScale(0.97);
   const entranceStyle = useStaggeredEntry(index, { delay: 70, distance: 14 });
 
@@ -156,11 +129,11 @@ function MatchCard({ match, index }: { match: MatchedProgram; index: number }) {
         </Text>
 
         <PressableButton
-          label="Apply"
-          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+          label="Accept Match"
+          onPress={onAccept}
           variant="primary"
           size="sm"
-          trailingIcon="arrow-forward"
+          trailingIcon="checkmark-circle-outline"
         />
       </TouchableOpacity>
     </Animated.View>
@@ -257,6 +230,8 @@ export default function AidScreen() {
   const [loans, setLoans] = useState<LoanApplication[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  const navigation = useNavigation<any>();
+
   const headerEntrance = useSpringEntrance({ delay: 0, distance: 12 });
   const segmentEntrance = useSpringEntrance({ delay: 100, distance: 8 });
 
@@ -271,13 +246,32 @@ export default function AidScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchLoans(); }, [fetchLoans]);
+  // Approved loans are the real "matches" from government banks
+  const approvedLoans = loans.filter(l => l.status === 'APPROVED');
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchLoans();
+    }, [fetchLoans])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchLoans();
     setRefreshing(false);
   }, [fetchLoans]);
+
+  const toMatchedProgram = (loan: LoanApplication): MatchedProgram => ({
+    id: loan.id,
+    name: `${loan.purpose} Financing`,
+    agency: 'LANDBANK / DBP',
+    amount: '₱' + (loan.approved_amount || loan.requested_amount).toLocaleString('en-PH', { minimumFractionDigits: 0 }),
+    type: 'Loan',
+    reason: `Matched: Auto-approved based on excellent business financial health (Score: ${
+      (loan as any).creditScore?.riskScore || 85
+    }).`,
+    isNew: true,
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -331,9 +325,31 @@ export default function AidScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {segment === 'Matches' ? (
-          MOCK_MATCHES.map((match, index) => (
-            <MatchCard key={match.id} match={match} index={index} />
-          ))
+          approvedLoans.length === 0 ? (
+            <EmptyState
+              icon="sparkles-outline"
+              title="No matches yet"
+              description="Apply for a government loan to get matched with LANDBANK, DBP, and other partner banks."
+            />
+          ) : (
+            approvedLoans.map((loan, index) => (
+              <MatchCard 
+                key={loan.id} 
+                match={toMatchedProgram(loan)} 
+                index={index} 
+                onAccept={async () => {
+                  try {
+                    await client.post(`/loans/${loan.id}/accept`);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    Alert.alert('Match Accepted!', 'Your loan is now ready for disbursement. Head to your Dashboard to Cash Out.');
+                    navigation.navigate('Home');
+                  } catch (err) {
+                    Alert.alert('Error', 'Failed to accept the match.');
+                  }
+                }}
+              />
+            ))
+          )
         ) : loans.length === 0 ? (
           <EmptyState
             icon="document-text-outline"

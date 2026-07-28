@@ -16,7 +16,7 @@ Acts as a streamlined aggregator and marketplace connecting Philippine MSMEs to 
 
 ## Positioning
 
-Integrated eGovPH ecosystem access (PhilSys eVerify, eFacial liveness, eMessage SMS, government registry validation) offering automated credit scoring and friction-free loan/aid applications.
+Integrated eGovPH ecosystem access (PhilSys eVerify, eFace Liveness, eMessage SMS, government registry validation) offering automated credit scoring and friction-free loan/aid applications.
 
 ## Operating Context
 
@@ -27,7 +27,7 @@ Mobile application environment (`mobile/`) where business owners complete focuse
 - Primary application is React Native (Expo, TypeScript).
 - Backend infrastructure is Express + SQLite.
 - Static landing page only in `frontend/`.
-- Strict integration with eGovPH SSO, PhilSys eVerify, and eFacial biometric validation.
+- Strict integration with eGovPH SSO, PhilSys eVerify, and eFace Liveness biometric validation.
 
 ## Brand Commitments
 

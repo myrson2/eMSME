@@ -5,6 +5,7 @@ import FaceLivenessScreen from '../screens/FaceLivenessScreen';
 import SMSOTPScreen from '../screens/SMSOTPScreen';
 import EVerifyScreen from '../screens/EVerifyScreen';
 import BusinessProfileScreen from '../screens/BusinessProfileScreen';
+import BusinessSelectScreen from '../screens/BusinessSelectScreen';
 import BusinessVerificationScreen from '../screens/BusinessVerificationScreen';
 import FinancialsScreen from '../screens/FinancialsScreen';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +28,7 @@ export default function AuthStack() {
         return { name: 'EVerify', component: EVerifyScreen };
       case 'BUSINESS_PROFILE':
       case 'identity_verified':
-        return { name: 'BusinessProfile', component: BusinessProfileScreen };
+        return { name: 'BusinessSelect', component: BusinessSelectScreen };
       case 'BUSINESS_VERIFY':
       case 'business_profile_created':
         return { name: 'BusinessVerification', component: BusinessVerificationScreen };
@@ -50,7 +51,12 @@ export default function AuthStack() {
           {currentScreen.name === 'FaceLiveness' && <Stack.Screen name="FaceLiveness" component={FaceLivenessScreen} />}
           {currentScreen.name === 'SMSOTP' && <Stack.Screen name="SMSOTP" component={SMSOTPScreen} />}
           {currentScreen.name === 'EVerify' && <Stack.Screen name="EVerify" component={EVerifyScreen} />}
-          {currentScreen.name === 'BusinessProfile' && <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} />}
+          {currentScreen.name === 'BusinessSelect' && (
+            <>
+              <Stack.Screen name="BusinessSelect" component={BusinessSelectScreen} />
+              <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} />
+            </>
+          )}
           {currentScreen.name === 'BusinessVerification' && <Stack.Screen name="BusinessVerification" component={BusinessVerificationScreen} />}
           {currentScreen.name === 'Financials' && <Stack.Screen name="Financials" component={FinancialsScreen} />}
         </>

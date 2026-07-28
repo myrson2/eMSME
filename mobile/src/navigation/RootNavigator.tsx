@@ -3,11 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import AuthStack from './AuthStack';
 import AppStack from './AppStack';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 export default function RootNavigator() {
-  const { isAuthenticated, isLoading, onboardingStep } = useAuth();
+  const { isAuthenticated, isLoading, onboardingStep, restartToPhilSys } = useAuth();
 
   if (isLoading) {
     return (
@@ -38,8 +38,12 @@ export default function RootNavigator() {
   const isFullyOnboarded = isAuthenticated && (onboardingStep === 'COMPLETE' || onboardingStep === 'completed');
 
   return (
-    <NavigationContainer>
-      {isFullyOnboarded ? <AppStack /> : <AuthStack />}
-    </NavigationContainer>
+    <View style={{ flex: 1 }}>
+      <NavigationContainer>
+        {isFullyOnboarded ? <AppStack /> : <AuthStack />}
+      </NavigationContainer>
+
+
+    </View>
   );
 }

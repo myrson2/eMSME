@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import axios from 'axios';
 import crypto from 'crypto';
 import getDb from '../../db/index.js';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
+import { sendEMessageSms, toEMessageMobileNumber } from '../../services/emessage.js';
 
 const router = Router();
 
@@ -48,6 +48,14 @@ router.post('/send-otp', authenticateToken, async (req: AuthenticatedRequest, re
       return;
     }
 
+    let providerMobileNumber: string;
+    try {
+      providerMobileNumber = toEMessageMobileNumber(mobileNumber);
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+      return;
+    }
+
     if (isRateLimited(mobileNumber)) {
       res.status(429).json({ success: false, message: 'Too many OTP requests. Please wait before requesting again.' });
       return;
@@ -60,31 +68,17 @@ router.post('/send-otp', authenticateToken, async (req: AuthenticatedRequest, re
     otpStore.set(mobileNumber, { hash, expiresAt, attempts: 0 });
     recordRequest(mobileNumber);
 
-    const actionLabel = action === 'DISBURSEMENT_RELEASE' ? 'loan disbursement release' : 'verification';
-    const message = `Your eMSME verification code for ${actionLabel} is ${otp}. Valid for 5 minutes. Do not share this code with anyone.`;
-
-    const emessageUrl = process.env.EMESSAGE_API_URL;
-    const emessageToken = process.env.EMESSAGE_API_TOKEN;
+    const message = `eMSME code: ${otp}. Valid for 5 minutes.`;
 
     let messageId: string;
 
-    if (emessageUrl && emessageToken) {
+    if (process.env.EMESSAGE_API_URL && process.env.EMESSAGE_API_TOKEN) {
       // === LIVE eMessage API call ===
       try {
-        const smsRes = await axios.post(
-          `${emessageUrl}/messaging/v1/sms/push`,
-          { number: mobileNumber, message, token: emessageToken },
-          {
-            headers: {
-              'X-EMESSAGE-Auth': emessageToken,
-              'Authorization': `Bearer ${emessageToken}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 10000,
-          }
-        );
-        messageId = smsRes.data?.data?.message_id ?? smsRes.data?.message_id ?? `MSG-${Date.now()}`;
-        console.log(`[eMessage] OTP dispatched to ${mobileNumber} — messageId: ${messageId}`);
+        const result = await sendEMessageSms(mobileNumber, message);
+        messageId = result.messageId ?? `MSG-${Date.now()}`;
+        const providerId = result.messageId ? `provider messageId: ${result.messageId}` : `accepted by gateway; no provider message ID returned (correlationId: ${messageId})`;
+        console.log(`[eMessage] OTP submitted to ${providerMobileNumber} — ${providerId}`);
       } catch (smsErr: any) {
         console.error('[eMessage] SMS dispatch failed:', smsErr?.response?.data ?? smsErr?.message);
         console.warn('[eMessage STAGING] Falling back to staging OTP due to SMS gateway error. OTP:', otp);

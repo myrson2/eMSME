@@ -8,6 +8,7 @@ import { useSpringEntrance, useStaggeredEntry } from '../lib/animations';
 import { colors, text, spacing, radius, shadows, fonts } from '../lib/theme';
 import { SkeletonCard, SkeletonText } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
+import PressableButton from '../components/ui/PressableButton';
 
 // ---------------------------------------------------------------------------
 // Verification check row
@@ -213,6 +214,16 @@ export default function BusinessDetailsScreen() {
               )}
             </View>
           </Animated.View>
+
+          {/* CTA: Apply for Loan */}
+          <Animated.View style={[{ marginTop: 32 }, checksEntrance]}>
+            <PressableButton
+              label="Apply for Government Loan"
+              onPress={() => navigation.navigate('ApplyLoan')}
+              variant="primary"
+            />
+          </Animated.View>
+
         </ScrollView>
       )}
     </View>

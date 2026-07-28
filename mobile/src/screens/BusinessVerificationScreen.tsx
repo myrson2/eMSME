@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Alert } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +6,6 @@ import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useSpringEntrance, useStaggeredEntry } from '../lib/animations';
 import { colors, text, spacing, radius, shadows, fonts } from '../lib/theme';
-import PressableButton from '../components/ui/PressableButton';
 import StatusDot from '../components/ui/StatusDot';
 
 export default function BusinessVerificationScreen() {
@@ -18,10 +17,19 @@ export default function BusinessVerificationScreen() {
     BIR: 'PENDING',
     LGU: 'PENDING',
   });
+  const hasStarted = useRef(false);
 
   const headerEntrance = useSpringEntrance({ delay: 0, distance: 16 });
   const listEntrance = useSpringEntrance({ delay: 150, distance: 14 });
-  const ctaEntrance = useSpringEntrance({ delay: 300, distance: 12 });
+
+  useEffect(() => {
+    if (!hasStarted.current) {
+      hasStarted.current = true;
+      setTimeout(() => {
+        handleVerify();
+      }, 1000);
+    }
+  }, []);
 
   const handleVerify = async () => {
     try {
@@ -160,17 +168,6 @@ export default function BusinessVerificationScreen() {
             {currentAgency}
           </Text>
         )}
-      </Animated.View>
-
-      <Animated.View style={ctaEntrance}>
-        <PressableButton
-          onPress={handleVerify}
-          label="Start verification"
-          icon="shield-checkmark-outline"
-          loading={loading}
-          variant="primary"
-          size="lg"
-        />
       </Animated.View>
     </View>
   );
